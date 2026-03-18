@@ -18,6 +18,12 @@
 
 # misc
 .DS_Store
+
+# rendered template images (keep directory structure via .gitkeep)
+/storage/**/*.png
+/storage/**/*.jpg
+/storage/**/*.jpeg
+
 *.pem
 
 # debug

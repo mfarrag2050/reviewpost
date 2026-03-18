@@ -7,6 +7,9 @@ services:
       dockerfile: Dockerfile
     ports:
       - "3000:3000"
+    security_opt:
+      - seccomp=unconfined
+    shm_size: '256m'
     volumes:
       - .:/app
       - /app/node_modules
@@ -14,6 +17,8 @@ services:
     environment:
       - DATABASE_URL=postgresql://user:password@db:5432/reviewpost
       - REDIS_URL=redis://redis:6379
+      - PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+      - PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
     depends_on:
       - db
       - redis
