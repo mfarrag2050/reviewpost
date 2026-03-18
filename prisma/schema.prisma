@@ -1,18 +1,196 @@
 generator client {
   provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
+// ─── Enums ───────────────────────────────────────────────
+
+enum Role {
+  ADMIN
+  USER
+}
+
+enum Plan {
+  STARTER
+  GROWTH
+  AGENCY
+}
+
+enum Language {
+  AR
+  TR
+  EN
+}
+
+enum AiMode {
+  SHARED
+  BYOK
+  MANAGED
+}
+
+enum BusinessType {
+  RESTAURANT
+  HOTEL
+  CLINIC
+  SALON
+  STORE
+  OTHER
+}
+
+enum BusinessPlatform {
+  GOOGLE
+  FACEBOOK
+  TRIPADVISOR
+  SALLA
+  SHOPIFY
+  WOOCOMMERCE
+}
+
+enum ReviewSource {
+  GOOGLE
+  FACEBOOK
+  TRIPADVISOR
+  SALLA
+  SHOPIFY
+}
+
+enum PostPlatform {
+  INSTAGRAM
+  FACEBOOK
+  TWITTER
+  TIKTOK
+}
+
+enum PostStatus {
+  QUEUED
+  PUBLISHED
+  FAILED
+}
+
+enum TemplateCategory {
+  REVIEW
+  PRODUCT
+  CAROUSEL
+  STORY
+}
+
+// ─── Models ──────────────────────────────────────────────
+
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String?   @unique
-  emailVerified DateTime?
-  image         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id             String    @id @default(cuid())
+  email          String    @unique
+  name           String?
+  role           Role      @default(USER)
+  plan           Plan      @default(STARTER)
+  language       Language  @default(AR)
+  aiMode         AiMode    @default(SHARED) @map("ai_mode")
+  ownApiKey      String?   @map("own_api_key")
+  dedicatedKey   String?   @map("dedicated_key")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  businesses     Business[]
+  usages         Usage[]
+
+  @@map("users")
+}
+
+model Business {
+  id              String           @id @default(cuid())
+  userId          String           @map("user_id")
+  name            String
+  type            BusinessType     @default(OTHER)
+  googlePlaceId   String?          @map("google_place_id")
+  facebookPageId  String?          @map("facebook_page_id")
+  tripadvisorId   String?          @map("tripadvisor_id")
+  logoUrl         String?          @map("logo_url")
+  brandColors     Json?            @map("brand_colors")
+  platform        BusinessPlatform
+  createdAt       DateTime         @default(now()) @map("created_at")
+
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reviews         Review[]
+  posts           Post[]
+
+  @@map("businesses")
+}
+
+model Review {
+  id              String       @id @default(cuid())
+  businessId      String       @map("business_id")
+  source          ReviewSource
+  externalId      String       @map("external_id")
+  authorName      String?      @map("author_name")
+  rating          Int?
+  text            String?
+  productId       String?      @map("product_id")
+  productImageUrl String?      @map("product_image_url")
+  pulledAt        DateTime     @default(now()) @map("pulled_at")
+  createdAt       DateTime     @default(now()) @map("created_at")
+
+  business        Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  posts           Post[]
+
+  @@unique([source, externalId])
+  @@index([businessId])
+  @@index([externalId])
+  @@map("reviews")
+}
+
+model Post {
+  id              String       @id @default(cuid())
+  businessId      String       @map("business_id")
+  reviewId        String       @map("review_id")
+  caption         String?
+  imageUrl        String?      @map("image_url")
+  templateId      String?      @map("template_id")
+  platform        PostPlatform
+  status          PostStatus   @default(QUEUED)
+  scheduledAt     DateTime?    @map("scheduled_at")
+  publishedAt     DateTime?    @map("published_at")
+  engagementData  Json?        @map("engagement_data")
+  createdAt       DateTime     @default(now()) @map("created_at")
+
+  business        Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  review          Review       @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  template        Template?    @relation(fields: [templateId], references: [id], onDelete: SetNull)
+
+  @@index([businessId])
+  @@index([status])
+  @@map("posts")
+}
+
+model Usage {
+  id              String   @id @default(cuid())
+  userId          String   @map("user_id")
+  month           String   // YYYY-MM format
+  postsGenerated  Int      @default(0) @map("posts_generated")
+  postsPublished  Int      @default(0) @map("posts_published")
+  reviewsPulled   Int      @default(0) @map("reviews_pulled")
+  apiCalls        Int      @default(0) @map("api_calls")
+  storageBytes    BigInt   @default(0) @map("storage_bytes")
+
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, month])
+  @@index([userId, month])
+  @@map("usages")
+}
+
+model Template {
+  id              String           @id @default(cuid())
+  name            String
+  htmlContent     String           @map("html_content")
+  thumbnailUrl    String?          @map("thumbnail_url")
+  category        TemplateCategory
+  isRtl           Boolean          @default(false) @map("is_rtl")
+  createdAt       DateTime         @default(now()) @map("created_at")
+
+  posts           Post[]
+
+  @@map("templates")
 }
