@@ -1,101 +1,110 @@
-import Image from "next/image";
+import { auth } from '@/auth';
+import { redirect } from 'next/navigation';
+import { LoginButton } from '@/components/auth/LoginButton';
 
-export default function Home() {
+export default async function LandingPage() {
+  const session = await auth();
+
+  // Redirect authenticated users straight to dashboard
+  if (session?.user) {
+    redirect('/dashboard');
+  }
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+    <main
+      style={{
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%)',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontFamily: "'Inter', 'Segoe UI', sans-serif",
+        padding: '24px',
+        position: 'relative',
+        overflow: 'hidden',
+      }}
+    >
+      {/* Background glow orbs */}
+      <div style={{
+        position: 'absolute', width: 600, height: 600, borderRadius: '50%',
+        background: 'radial-gradient(circle, rgba(124,58,237,0.3) 0%, transparent 70%)',
+        top: -200, left: -200, pointerEvents: 'none',
+      }} />
+      <div style={{
+        position: 'absolute', width: 400, height: 400, borderRadius: '50%',
+        background: 'radial-gradient(circle, rgba(59,130,246,0.2) 0%, transparent 70%)',
+        bottom: -100, right: -100, pointerEvents: 'none',
+      }} />
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+      {/* Card */}
+      <div style={{
+        background: 'rgba(255,255,255,0.05)',
+        backdropFilter: 'blur(20px)',
+        border: '1px solid rgba(255,255,255,0.1)',
+        borderRadius: 32,
+        padding: '60px 48px',
+        maxWidth: 480,
+        width: '100%',
+        textAlign: 'center',
+        position: 'relative',
+        boxShadow: '0 32px 80px rgba(0,0,0,0.5)',
+      }}>
+        {/* Logo mark */}
+        <div style={{
+          width: 72, height: 72, margin: '0 auto 24px',
+          background: 'linear-gradient(135deg, #7C3AED, #4F46E5)',
+          borderRadius: 20, display: 'flex', alignItems: 'center',
+          justifyContent: 'center', fontSize: 36,
+          boxShadow: '0 8px 32px rgba(124,58,237,0.5)',
+        }}>
+          ⭐
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+
+        <h1 style={{
+          fontSize: 36, fontWeight: 800, color: '#ffffff',
+          margin: '0 0 12px', lineHeight: 1.2, letterSpacing: '-0.5px',
+        }}>
+          ReviewPost
+        </h1>
+
+        <p style={{
+          fontSize: 17, color: 'rgba(255,255,255,0.6)',
+          margin: '0 0 8px', lineHeight: 1.6,
+        }}>
+          Turn 5-star reviews into stunning social media posts
+        </p>
+
+        <p style={{
+          fontSize: 14, color: 'rgba(255,255,255,0.35)',
+          margin: '0 0 40px',
+        }}>
+          Instagram · Facebook · Twitter — powered by AI
+        </p>
+
+        {/* Features list */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 36, textAlign: 'left' }}>
+          {[
+            { icon: '🔗', text: 'Connect Google Business in one click' },
+            { icon: '🤖', text: 'AI writes captions in Arabic, English & Turkish' },
+            { icon: '🎨', text: '3 beautiful branded templates, 1080×1080px' },
+          ].map(({ icon, text }) => (
+            <div key={text} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span style={{ fontSize: 20, flexShrink: 0 }}>{icon}</span>
+              <span style={{ fontSize: 15, color: 'rgba(255,255,255,0.7)' }}>{text}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Login button rendered client-side */}
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
+          <LoginButton />
+        </div>
+
+        <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.25)', marginTop: 24 }}>
+          Free to start · No credit card required
+        </p>
+      </div>
+    </main>
   );
 }
