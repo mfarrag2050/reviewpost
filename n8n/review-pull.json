@@ -1,0 +1,220 @@
+{
+  "name": "ReviewPost — Review Pull",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      },
+      "id": "cron-trigger",
+      "name": "Every 6 Hours",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.REVIEWPOST_API_URL}}/api/reviews/active-businesses",
+        "options": {}
+      },
+      "id": "get-businesses",
+      "name": "Get Active Businesses",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "businesses",
+        "options": {}
+      },
+      "id": "split-businesses",
+      "name": "Split Businesses",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.REVIEWPOST_API_URL}}/api/reviews/google",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ businessId: $json.id }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "pull-reviews",
+      "name": "Pull Google Reviews",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 300],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-saved",
+              "leftValue": "={{ $json.saved }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-new-reviews",
+      "name": "New Reviews Found?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.N8N_WEBHOOK_URL}}/webhook/content-generation",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ businessId: $json.businessId, saved: $json.saved }) }}",
+        "options": {}
+      },
+      "id": "trigger-content-gen",
+      "name": "Trigger Content Generation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1340, 200]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "log-entry",
+              "name": "log",
+              "value": "={{ 'Business ' + $json.businessId + ': ' + $json.totalFound + ' found, ' + $json.saved + ' saved, ' + $json.skippedDuplicate + ' dupes' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "log-results",
+      "name": "Log Results",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1340, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-error",
+              "leftValue": "={{ $json.error }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "isNotEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-errors",
+      "name": "Has Errors?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1120, 520]
+    },
+    {
+      "parameters": {
+        "chatId": "={{$env.TELEGRAM_CHAT_ID}}",
+        "text": "=⚠️ *ReviewPost Review Pull Error*\n\nBusiness: `{{ $json.businessId }}`\nError: {{ $json.error }}\nTime: {{ $now.toISO() }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "telegram-error",
+      "name": "Telegram Error Alert",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [1340, 520],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-bot",
+          "name": "ReviewPost Telegram Bot"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Every 6 Hours": {
+      "main": [
+        [{ "node": "Get Active Businesses", "type": "main", "index": 0 }]
+      ]
+    },
+    "Get Active Businesses": {
+      "main": [
+        [{ "node": "Split Businesses", "type": "main", "index": 0 }]
+      ]
+    },
+    "Split Businesses": {
+      "main": [
+        [{ "node": "Pull Google Reviews", "type": "main", "index": 0 }]
+      ]
+    },
+    "Pull Google Reviews": {
+      "main": [
+        [
+          { "node": "New Reviews Found?", "type": "main", "index": 0 },
+          { "node": "Has Errors?", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "New Reviews Found?": {
+      "main": [
+        [{ "node": "Trigger Content Generation", "type": "main", "index": 0 }],
+        [{ "node": "Log Results", "type": "main", "index": 0 }]
+      ]
+    },
+    "Has Errors?": {
+      "main": [
+        [{ "node": "Telegram Error Alert", "type": "main", "index": 0 }],
+        []
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    { "name": "ReviewPost" },
+    { "name": "Automation" }
+  ]
+}

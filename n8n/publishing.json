@@ -1,0 +1,169 @@
+{
+  "name": "ReviewPost — Publishing Queue",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 15
+            }
+          ]
+        }
+      },
+      "id": "cron-trigger",
+      "name": "Every 15 Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.REVIEWPOST_API_URL}}/api/publishing/process-queue",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "process-queue",
+      "name": "Process Publish Queue",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-published",
+              "leftValue": "={{ $json.published }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "any-published",
+      "name": "Any Published?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "chatId": "={{$env.TELEGRAM_CHAT_ID}}",
+        "text": "=✅ *ReviewPost Publishing*\n\nProcessed: {{ $json.processed }}\nPublished: {{ $json.published }}\nFailed: {{ $json.failed }}\nTime: {{ $now.toISO() }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "telegram-success",
+      "name": "Telegram Published",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [900, 200],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-bot",
+          "name": "ReviewPost Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-failed",
+              "leftValue": "={{ $json.failed }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "any-failed",
+      "name": "Any Failed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [680, 520]
+    },
+    {
+      "parameters": {
+        "chatId": "={{$env.TELEGRAM_CHAT_ID}}",
+        "text": "=⚠️ *ReviewPost Publishing Failures*\n\nFailed: {{ $json.failed }} / {{ $json.processed }}\nErrors: {{ JSON.stringify($json.errors) }}\nTime: {{ $now.toISO() }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "telegram-failure",
+      "name": "Telegram Failures",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [900, 520],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-bot",
+          "name": "ReviewPost Telegram Bot"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Every 15 Minutes": {
+      "main": [
+        [{ "node": "Process Publish Queue", "type": "main", "index": 0 }]
+      ]
+    },
+    "Process Publish Queue": {
+      "main": [
+        [
+          { "node": "Any Published?", "type": "main", "index": 0 },
+          { "node": "Any Failed?", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Any Published?": {
+      "main": [
+        [{ "node": "Telegram Published", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "Any Failed?": {
+      "main": [
+        [{ "node": "Telegram Failures", "type": "main", "index": 0 }],
+        []
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    { "name": "ReviewPost" },
+    { "name": "Automation" }
+  ]
+}

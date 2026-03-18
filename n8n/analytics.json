@@ -1,0 +1,170 @@
+{
+  "name": "ReviewPost — Analytics Pull",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      },
+      "id": "cron-trigger",
+      "name": "Every 6 Hours",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.REVIEWPOST_API_URL}}/api/publishing/posts-needing-insights",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ minHoursAgo: 24, maxHoursAgo: 72 }) }}",
+        "options": {}
+      },
+      "id": "get-posts",
+      "name": "Get Posts Needing Insights",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "posts",
+        "options": {}
+      },
+      "id": "split-posts",
+      "name": "Split Posts",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.REVIEWPOST_API_URL}}/api/publishing/insights",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ postId: $json.id }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "pull-insights",
+      "name": "Pull Insights",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 300],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-success",
+              "leftValue": "={{ $json.success }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-result",
+      "name": "Success?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "log-entry",
+              "name": "log",
+              "value": "={{ 'Insights pulled for post ' + $json.postId + ': reach=' + ($json.insights?.reach || 0) + ', engagement=' + ($json.insights?.engagement || 0) }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "log-insights",
+      "name": "Log Insights",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1340, 200]
+    },
+    {
+      "parameters": {
+        "chatId": "={{$env.TELEGRAM_CHAT_ID}}",
+        "text": "=⚠️ *Insights Pull Failed*\n\nPost: `{{ $json.postId }}`\nError: {{ $json.error }}\nTime: {{ $now.toISO() }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "telegram-error",
+      "name": "Telegram Error",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [1340, 420],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-bot",
+          "name": "ReviewPost Telegram Bot"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Every 6 Hours": {
+      "main": [
+        [{ "node": "Get Posts Needing Insights", "type": "main", "index": 0 }]
+      ]
+    },
+    "Get Posts Needing Insights": {
+      "main": [
+        [{ "node": "Split Posts", "type": "main", "index": 0 }]
+      ]
+    },
+    "Split Posts": {
+      "main": [
+        [{ "node": "Pull Insights", "type": "main", "index": 0 }]
+      ]
+    },
+    "Pull Insights": {
+      "main": [
+        [{ "node": "Success?", "type": "main", "index": 0 }]
+      ]
+    },
+    "Success?": {
+      "main": [
+        [{ "node": "Log Insights", "type": "main", "index": 0 }],
+        [{ "node": "Telegram Error", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    { "name": "ReviewPost" },
+    { "name": "Analytics" }
+  ]
+}

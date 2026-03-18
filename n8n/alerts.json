@@ -1,0 +1,201 @@
+{
+  "name": "ReviewPost — Alerts & Meta-Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "github-push",
+        "options": {}
+      },
+      "id": "github-webhook",
+      "name": "GitHub Push Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 200],
+      "webhookId": "github-push"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "parse-push",
+              "name": "message",
+              "value": "={{ '🚀 *Git Push — ReviewPost*\\n\\nBranch: `' + ($json.body.ref || '').replace('refs/heads/', '') + '`\\nBy: ' + ($json.body.pusher?.name || 'unknown') + '\\nCommits: ' + ($json.body.commits?.length || 0) + '\\n\\n' + ($json.body.commits || []).map(c => '• `' + c.id.substring(0, 7) + '` ' + c.message.split('\\n')[0]).join('\\n') }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "format-push",
+      "name": "Format Push Message",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [460, 200]
+    },
+    {
+      "parameters": {
+        "chatId": "={{$env.TELEGRAM_CHAT_ID}}",
+        "text": "={{ $json.message }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "telegram-push",
+      "name": "Telegram Push Notification",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [680, 200],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-bot",
+          "name": "ReviewPost Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * *"
+            }
+          ]
+        }
+      },
+      "id": "daily-cron",
+      "name": "Daily 9 AM",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 460]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.REVIEWPOST_API_URL}}/api/dashboard/daily-summary",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "get-daily-stats",
+      "name": "Get Daily Stats",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 460],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "chatId": "={{$env.TELEGRAM_CHAT_ID}}",
+        "text": "=📊 *ReviewPost Daily Summary*\n\n📥 Reviews pulled: {{ $json.reviewsPulled || 0 }}\n🖼 Posts generated: {{ $json.postsGenerated || 0 }}\n📤 Posts published: {{ $json.postsPublished || 0 }}\n❌ Posts failed: {{ $json.postsFailed || 0 }}\n👥 Active businesses: {{ $json.activeBusinesses || 0 }}\n\nDate: {{ $now.format('yyyy-MM-dd') }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "telegram-daily",
+      "name": "Telegram Daily Summary",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [680, 460],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-bot",
+          "name": "ReviewPost Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 10 * * 0"
+            }
+          ]
+        }
+      },
+      "id": "weekly-cron",
+      "name": "Weekly Sunday 10 AM",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 700]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.REVIEWPOST_API_URL}}/api/dashboard/weekly-summary",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "get-weekly-stats",
+      "name": "Get Weekly Stats",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 700],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "chatId": "={{$env.TELEGRAM_CHAT_ID}}",
+        "text": "=📈 *ReviewPost Weekly Sprint Summary*\n\n*This Week:*\n📥 Reviews: {{ $json.reviewsPulled || 0 }}\n📤 Published: {{ $json.postsPublished || 0 }}\n💬 Total engagement: {{ $json.totalEngagement || 0 }}\n📊 Avg reach/post: {{ $json.avgReach || 0 }}\n\n*Top Business:* {{ $json.topBusiness || 'N/A' }}\n*Top Post Reach:* {{ $json.topPostReach || 0 }}\n\nWeek: {{ $now.format('yyyy-MM-dd') }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "telegram-weekly",
+      "name": "Telegram Weekly Summary",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [680, 700],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-bot",
+          "name": "ReviewPost Telegram Bot"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "GitHub Push Webhook": {
+      "main": [
+        [{ "node": "Format Push Message", "type": "main", "index": 0 }]
+      ]
+    },
+    "Format Push Message": {
+      "main": [
+        [{ "node": "Telegram Push Notification", "type": "main", "index": 0 }]
+      ]
+    },
+    "Daily 9 AM": {
+      "main": [
+        [{ "node": "Get Daily Stats", "type": "main", "index": 0 }]
+      ]
+    },
+    "Get Daily Stats": {
+      "main": [
+        [{ "node": "Telegram Daily Summary", "type": "main", "index": 0 }]
+      ]
+    },
+    "Weekly Sunday 10 AM": {
+      "main": [
+        [{ "node": "Get Weekly Stats", "type": "main", "index": 0 }]
+      ]
+    },
+    "Get Weekly Stats": {
+      "main": [
+        [{ "node": "Telegram Weekly Summary", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    { "name": "ReviewPost" },
+    { "name": "Alerts" }
+  ]
+}

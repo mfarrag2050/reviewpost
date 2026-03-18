@@ -1,0 +1,211 @@
+{
+  "name": "ReviewPost — Content Generation",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "content-generation",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "content-generation"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.REVIEWPOST_API_URL}}/api/reviews/recent",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ businessId: $json.body.businessId, limit: $json.body.saved || 10 }) }}",
+        "options": {}
+      },
+      "id": "get-new-reviews",
+      "name": "Get New Reviews",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "reviews",
+        "options": {}
+      },
+      "id": "split-reviews",
+      "name": "Split Reviews",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.REVIEWPOST_API_URL}}/api/ai/generate-caption",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ reviewId: $json.id, platform: 'INSTAGRAM', includeHashtags: true, includeCTA: true }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "generate-caption",
+      "name": "Generate Caption",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 300],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.REVIEWPOST_API_URL}}/api/templates/render",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ reviewId: $json.reviewId, templateId: 'classic', platform: 'INSTAGRAM' }) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "render-template",
+      "name": "Render Template",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 300],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.REVIEWPOST_API_URL}}/api/templates/render",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ reviewId: $json.reviewId, templateId: 'bold', platform: 'FACEBOOK' }) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "render-fb-template",
+      "name": "Render FB Template",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 500],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "summary",
+              "name": "summary",
+              "value": "={{ 'Generated content for review ' + $json.reviewId + ': caption ✓, IG image ✓, FB image ✓' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "log-success",
+      "name": "Log Success",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1340, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-error",
+              "leftValue": "={{ $json.error }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "isNotEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-gen-error",
+      "name": "Caption Error?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [900, 520]
+    },
+    {
+      "parameters": {
+        "chatId": "={{$env.TELEGRAM_CHAT_ID}}",
+        "text": "=⚠️ *Content Generation Failed*\n\nReview: `{{ $json.reviewId }}`\nError: {{ $json.error }}\nTime: {{ $now.toISO() }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "telegram-gen-error",
+      "name": "Telegram Alert",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [1120, 680],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-bot",
+          "name": "ReviewPost Telegram Bot"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [{ "node": "Get New Reviews", "type": "main", "index": 0 }]
+      ]
+    },
+    "Get New Reviews": {
+      "main": [
+        [{ "node": "Split Reviews", "type": "main", "index": 0 }]
+      ]
+    },
+    "Split Reviews": {
+      "main": [
+        [{ "node": "Generate Caption", "type": "main", "index": 0 }]
+      ]
+    },
+    "Generate Caption": {
+      "main": [
+        [
+          { "node": "Render Template", "type": "main", "index": 0 },
+          { "node": "Render FB Template", "type": "main", "index": 0 },
+          { "node": "Caption Error?", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Render Template": {
+      "main": [
+        [{ "node": "Log Success", "type": "main", "index": 0 }]
+      ]
+    },
+    "Caption Error?": {
+      "main": [
+        [{ "node": "Telegram Alert", "type": "main", "index": 0 }],
+        []
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    { "name": "ReviewPost" },
+    { "name": "Automation" }
+  ]
+}
