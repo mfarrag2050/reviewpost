@@ -1,4 +1,5 @@
-import { auth } from '@/auth';
+import NextAuth from 'next-auth';
+import { authConfig } from './auth.config';
 import { NextResponse } from 'next/server';
 import type { NextAuthRequest } from 'next-auth';
 
@@ -6,9 +7,12 @@ export const config = {
     matcher: [
         '/dashboard/:path*',
         '/onboarding/:path*',
+        '/login',
         '/api/((?!auth/).*)',
     ],
 };
+
+const { auth } = NextAuth(authConfig);
 
 export default auth(function middleware(req: NextAuthRequest) {
     const { nextUrl } = req;

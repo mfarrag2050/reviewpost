@@ -1,22 +1,15 @@
 import NextAuth from 'next-auth';
-import Google from 'next-auth/providers/google';
-import type { NextAuthConfig } from 'next-auth';
+import { authConfig } from './auth.config';
 import { prisma } from '@/lib/prisma';
 
-export const authConfig: NextAuthConfig = {
-    providers: [
-        Google({
-            clientId: process.env.GOOGLE_CLIENT_ID!,
-            clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-        }),
-    ],
-
+export const { handlers, signIn, signOut, auth } = NextAuth({
+    ...authConfig,
     callbacks: {
-        async signIn({ user, account }) {
-            if (!user.email) return false;
+        ...authConfig.callbacks,
 
+        async signIn({ user }) {
+            if (!user.email) return false;
             try {
-                // Upsert user into our DB on every sign-in
                 await prisma.user.upsert({
                     where: { email: user.email },
                     create: {
@@ -26,10 +19,7 @@ export const authConfig: NextAuthConfig = {
                         aiMode: 'SHARED',
                         language: 'AR',
                     },
-                    update: {
-                        // Keep name in sync with Google profile
-                        name: user.name ?? undefined,
-                    },
+                    update: { name: user.name ?? undefined },
                 });
                 return true;
             } catch (err) {
@@ -39,7 +29,6 @@ export const authConfig: NextAuthConfig = {
         },
 
         async jwt({ token, user }) {
-            // On first sign-in `user` is available; enrich token with our DB id + plan
             if (user?.email) {
                 const dbUser = await prisma.user.findUnique({
                     where: { email: user.email },
@@ -56,7 +45,6 @@ export const authConfig: NextAuthConfig = {
         },
 
         async session({ session, token }) {
-            // Expose our DB fields onto the session object available in components
             if (token) {
                 session.user.userId = token.userId as string;
                 session.user.plan = token.plan as string;
@@ -66,13 +54,4 @@ export const authConfig: NextAuthConfig = {
             return session;
         },
     },
-
-    pages: {
-        signIn: '/login',
-        error: '/login',
-    },
-
-    session: { strategy: 'jwt' },
-};
-
-export const { handlers, signIn, signOut, auth } = NextAuth(authConfig);
+});
