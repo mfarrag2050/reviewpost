@@ -5,6 +5,7 @@ import type { NextAuthRequest } from 'next-auth';
 export const config = {
     matcher: [
         '/dashboard/:path*',
+        '/onboarding/:path*',
         '/api/((?!auth/).*)',
     ],
 };
@@ -15,6 +16,7 @@ export default auth(function middleware(req: NextAuthRequest) {
 
     const isLoginPage = nextUrl.pathname === '/login';
     const isDashboard = nextUrl.pathname.startsWith('/dashboard');
+    const isOnboarding = nextUrl.pathname.startsWith('/onboarding');
     const isApiRoute = nextUrl.pathname.startsWith('/api');
 
     // Redirect authenticated users away from login page
@@ -22,8 +24,8 @@ export default auth(function middleware(req: NextAuthRequest) {
         return NextResponse.redirect(new URL('/dashboard', nextUrl));
     }
 
-    // Protect dashboard routes — redirect to /login
-    if (isDashboard && !isLoggedIn) {
+    // Protect dashboard and onboarding routes — redirect to /login
+    if ((isDashboard || isOnboarding) && !isLoggedIn) {
         const callbackUrl = encodeURIComponent(nextUrl.pathname + nextUrl.search);
         return NextResponse.redirect(new URL(`/login?callbackUrl=${callbackUrl}`, nextUrl));
     }
