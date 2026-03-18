@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&family=Inter:wght@400;700;900&display=swap"
+        rel="stylesheet" />
+    <style>
+        :root {
+            --brand-primary: {
+                    {
+                    brand_primary
+                }
+            }
+
+            ;
+
+            --brand-secondary: {
+                    {
+                    brand_secondary
+                }
+            }
+
+            ;
+
+            --brand-text: {
+                    {
+                    brand_text
+                }
+            }
+
+            ;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            width: 1080px;
+            height: 1080px;
+            overflow: hidden;
+
+            font-family: {
+                    {
+                    font_family
+                }
+            }
+
+            ;
+            background: #0d0d0d;
+            display: flex;
+            flex-direction: row;
+            position: relative;
+        }
+
+        /* Left accent stripe */
+        .accent-stripe {
+            width: 18px;
+            height: 100%;
+            background: linear-gradient(180deg, var(--brand-primary), var(--brand-secondary));
+            flex-shrink: 0;
+        }
+
+        /* Main content */
+        .content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 64px 72px 56px 56px;
+            position: relative;
+        }
+
+        /* Top: stars */
+        .stars-block {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 40px;
+        }
+
+        .stars {
+            font-size: 64px;
+            letter-spacing: 8px;
+            color: var(--brand-primary);
+            filter: drop-shadow(0 0 16px var(--brand-primary));
+        }
+
+        .rating-label {
+            font-size: 26px;
+            font-weight: 700;
+            color: rgba(255, 255, 255, 0.4);
+            letter-spacing: 3px;
+            text-transform: uppercase;
+        }
+
+        /* Review text */
+        .review-text {
+            flex: 1;
+            font-size: 54px;
+            font-weight: 900;
+            color: #ffffff;
+            line-height: 1.35;
+            display: -webkit-box;
+            -webkit-line-clamp: 6;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Decorative quote mark watermark */
+        .watermark {
+            position: absolute;
+            bottom: 120px;
+            right: 56px;
+            font-size: 300px;
+            font-family: Georgia, serif;
+            color: rgba(255, 255, 255, 0.03);
+            line-height: 1;
+            pointer-events: none;
+            user-select: none;
+        }
+
+        /* Bottom bar */
+        .bottom-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-top: 32px;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            z-index: 1;
+        }
+
+        .biz-block {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .logo-wrap {
+            width: 72px;
+            height: 72px;
+            border-radius: 16px;
+            overflow: hidden;
+            background: rgba(255, 255, 255, 0.08);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid rgba(255, 255, 255, 0.12);
+        }
+
+        .logo-wrap img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .author-block {
+            text-align: right;
+        }
+
+        .author-name {
+            font-size: 28px;
+            font-weight: 700;
+            color: #ffffff;
+        }
+
+        .business-name {
+            font-size: 24px;
+            font-weight: 400;
+            color: var(--brand-primary);
+            margin-top: 4px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="accent-stripe"></div>
+
+    <div class="content">
+        <div class="stars-block">
+            <div class="stars">{{stars}}</div>
+            <div class="rating-label">{{rating}} / 5 · {{source}}</div>
+        </div>
+
+        <p class="review-text">{{review_text}}</p>
+
+        <div class="watermark">"</div>
+
+        <div class="bottom-bar">
+            <div class="biz-block">
+                <div class="logo-wrap">
+                    <img src="{{logo_url}}" alt="Logo" onerror="this.style.display='none'" />
+                </div>
+            </div>
+            <div class="author-block">
+                <div class="author-name">{{author_name}}</div>
+                <div class="business-name">{{business_name}}</div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>
