@@ -34,8 +34,11 @@ export default auth(function middleware(req: NextAuthRequest) {
         return NextResponse.redirect(new URL(`/login?callbackUrl=${callbackUrl}`, nextUrl));
     }
 
+    // Public API routes — no auth required
+    const isPublicApi = nextUrl.pathname.startsWith('/api/plans');
+
     // Protect API routes — return 401
-    if (isApiRoute && !isLoggedIn) {
+    if (isApiRoute && !isLoggedIn && !isPublicApi) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
