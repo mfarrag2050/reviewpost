@@ -687,9 +687,129 @@ function CheckIcon() {
     );
 }
 
-function PricingSection({ t }: { t: TKeys }) {
+// ─── API plan shape returned by /api/plans ────────────────────────────────────
+interface ApiPlan {
+    id: string;
+    name: string;
+    displayName: string;
+    price: number;
+    currency: string;
+    interval: string;
+    postsLimit: number;
+    reviewsLimit: number;
+    features: string[];
+    sortOrder: number;
+}
+
+const LANG_CURRENCY: Record<string, string> = { EN: 'USD', AR: 'SAR', TR: 'TL' };
+const CURRENCY_SYMBOL: Record<string, string> = { USD: '$', SAR: '﷼', TL: '₺' };
+const CURRENCY_SUFFIX: Record<string, boolean> = { SAR: true, TL: true };
+const PERIOD_LABEL: Record<string, string> = { USD: '/mo', SAR: '/ شهر', TL: '/ ay' };
+const POPULAR_TIER = 'GROWTH';
+
+function PlanCard({ plan, popular, popularLabel, ctaLabel, delay }: {
+    plan: ApiPlan & { localName: string; localDesc: string };
+    popular: boolean;
+    popularLabel: string;
+    ctaLabel: string;
+    delay: number;
+}) {
+    const { ref, inView } = useInView();
+    const sym = CURRENCY_SYMBOL[plan.currency] ?? plan.currency;
+    const suffix = CURRENCY_SUFFIX[plan.currency];
+    const period = PERIOD_LABEL[plan.currency] ?? '/mo';
+    const priceInt = Math.floor(plan.price);
+
+    return (
+        <div
+            ref={ref}
+            className={`relative rounded-3xl p-8 transition-all duration-700 ${inView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'} ${
+                popular
+                    ? 'bg-gradient-to-b from-indigo-600 to-violet-700 shadow-2xl shadow-indigo-200 ring-2 ring-indigo-600 scale-[1.02]'
+                    : 'bg-white border border-gray-100 shadow-sm'
+            }`}
+            style={{ transitionDelay: `${delay}ms` }}
+        >
+            {popular && (
+                <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
+                    <span className="bg-gradient-to-r from-amber-400 to-orange-400 text-white text-xs font-bold px-4 py-1.5 rounded-full shadow-sm whitespace-nowrap">
+                        {popularLabel}
+                    </span>
+                </div>
+            )}
+
+            <div className="mb-6">
+                <p className={`text-lg font-bold mb-1 ${popular ? 'text-white' : 'text-gray-900'}`}>{plan.localName}</p>
+                <p className={`text-sm ${popular ? 'text-white/70' : 'text-gray-500'}`}>{plan.localDesc}</p>
+            </div>
+
+            <div className="flex items-end gap-1 mb-6">
+                {!suffix && (
+                    <span className={`text-sm font-semibold ${popular ? 'text-white/80' : 'text-gray-600'}`}>{sym}</span>
+                )}
+                <span className={`text-5xl font-extrabold tracking-tight ${popular ? 'text-white' : 'text-gray-900'}`}>{priceInt}</span>
+                {suffix && (
+                    <span className={`text-sm font-semibold ${popular ? 'text-white/80' : 'text-gray-600'} mb-1`}>{sym}</span>
+                )}
+                <span className={`text-sm ${popular ? 'text-white/70' : 'text-gray-500'} mb-1`}>{period}</span>
+            </div>
+
+            <Link
+                href="/login"
+                className={`block text-center py-3 rounded-2xl text-sm font-bold transition-all duration-150 mb-8 ${
+                    popular
+                        ? 'bg-white text-indigo-600 hover:bg-white/90 shadow-md'
+                        : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm shadow-indigo-200'
+                }`}
+            >
+                {ctaLabel}
+            </Link>
+
+            <ul className="space-y-3">
+                {plan.features.map((f) => (
+                    <li key={f} className="flex items-start gap-2.5">
+                        <svg
+                            className={`w-4 h-4 flex-shrink-0 mt-0.5 ${popular ? 'text-white/80' : 'text-indigo-500'}`}
+                            fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                        >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                        </svg>
+                        <span className={`text-sm ${popular ? 'text-white/90' : 'text-gray-600'}`}>{f}</span>
+                    </li>
+                ))}
+            </ul>
+        </div>
+    );
+}
+
+function PricingSection({ t, lang }: { t: TKeys; lang: Lang }) {
     const [yearly, setYearly] = useState(false);
     const { ref, inView } = useInView();
+    const [apiPlans, setApiPlans] = useState<ApiPlan[]>([]);
+    const [plansLoading, setPlansLoading] = useState(true);
+
+    const currency = LANG_CURRENCY[lang] ?? 'USD';
+
+    useEffect(() => {
+        setPlansLoading(true);
+        fetch(`/api/plans?currency=${currency}`)
+            .then((r) => r.json())
+            .then((data) => setApiPlans(data.plans ?? []))
+            .catch(() => setApiPlans([]))
+            .finally(() => setPlansLoading(false));
+    }, [currency]);
+
+    const interval = yearly ? 'YEARLY' : 'MONTHLY';
+    const displayPlans = apiPlans
+        .filter((p) => p.interval === interval)
+        .sort((a, b) => a.sortOrder - b.sortOrder);
+
+    // Merge DB plan data with localized names/descs from T object
+    const mergedPlans = displayPlans.map((dbPlan, i) => ({
+        ...dbPlan,
+        localName: t.pricing.plans[i]?.name ?? dbPlan.displayName,
+        localDesc: t.pricing.plans[i]?.desc ?? '',
+    }));
 
     return (
         <section id="pricing" className="py-20 lg:py-28" style={{ background: 'linear-gradient(180deg, #f8faff 0%, #f0f4ff 50%, #f8faff 100%)' }}>
@@ -719,68 +839,34 @@ function PricingSection({ t }: { t: TKeys }) {
                     </div>
                 </div>
 
-                <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto items-start">
-                    {t.pricing.plans.map((plan, i) => {
-                        const { ref: pr, inView: pv } = useInView();
-                        const price = yearly ? plan.py : plan.pm;
-                        return (
-                            <div
-                                key={plan.name}
-                                ref={pr}
-                                className={`relative rounded-3xl p-8 transition-all duration-700 ${pv ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'} ${
-                                    plan.popular
-                                        ? 'bg-gradient-to-b from-indigo-600 to-violet-700 shadow-2xl shadow-indigo-200 ring-2 ring-indigo-600 scale-[1.02]'
-                                        : 'bg-white border border-gray-100 shadow-sm'
-                                }`}
-                                style={{ transitionDelay: `${i * 100}ms` }}
-                            >
-                                {plan.popular && (
-                                    <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
-                                        <span className="bg-gradient-to-r from-amber-400 to-orange-400 text-white text-xs font-bold px-4 py-1.5 rounded-full shadow-sm whitespace-nowrap">
-                                            {t.pricing.popular}
-                                        </span>
-                                    </div>
-                                )}
-
-                                <div className="mb-6">
-                                    <p className={`text-lg font-bold mb-1 ${plan.popular ? 'text-white' : 'text-gray-900'}`}>{plan.name}</p>
-                                    <p className={`text-sm ${plan.popular ? 'text-white/70' : 'text-gray-500'}`}>{plan.desc}</p>
-                                </div>
-
-                                <div className="flex items-end gap-1 mb-6">
-                                    <span className={`text-sm font-semibold ${plan.popular ? 'text-white/80' : 'text-gray-600'}`}>$</span>
-                                    <span className={`text-5xl font-extrabold tracking-tight ${plan.popular ? 'text-white' : 'text-gray-900'}`}>{price}</span>
-                                    <span className={`text-sm ${plan.popular ? 'text-white/70' : 'text-gray-500'} mb-1`}>/mo</span>
-                                </div>
-
-                                <Link
-                                    href="/login"
-                                    className={`block text-center py-3 rounded-2xl text-sm font-bold transition-all duration-150 mb-8 ${
-                                        plan.popular
-                                            ? 'bg-white text-indigo-600 hover:bg-white/90 shadow-md'
-                                            : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm shadow-indigo-200'
-                                    }`}
-                                >
-                                    {t.pricing.cta}
-                                </Link>
-
-                                <ul className="space-y-3">
-                                    {plan.features.map(f => (
-                                        <li key={f} className="flex items-start gap-2.5">
-                                            <svg
-                                                className={`w-4 h-4 flex-shrink-0 mt-0.5 ${plan.popular ? 'text-white/80' : 'text-indigo-500'}`}
-                                                fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                                            >
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                                            </svg>
-                                            <span className={`text-sm ${plan.popular ? 'text-white/90' : 'text-gray-600'}`}>{f}</span>
-                                        </li>
-                                    ))}
-                                </ul>
+                {plansLoading ? (
+                    <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+                        {[0, 1, 2].map((i) => (
+                            <div key={i} className="rounded-3xl p-8 bg-white border border-gray-100 shadow-sm animate-pulse">
+                                <div className="h-5 bg-gray-200 rounded w-1/3 mb-2" />
+                                <div className="h-4 bg-gray-100 rounded w-2/3 mb-8" />
+                                <div className="h-14 bg-gray-200 rounded w-1/2 mb-6" />
+                                <div className="h-10 bg-gray-100 rounded-2xl mb-8" />
+                                {[0, 1, 2, 3].map((j) => (
+                                    <div key={j} className="h-4 bg-gray-100 rounded mb-3" />
+                                ))}
                             </div>
-                        );
-                    })}
-                </div>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto items-start">
+                        {mergedPlans.map((plan, i) => (
+                            <PlanCard
+                                key={plan.id}
+                                plan={plan}
+                                popular={plan.name === POPULAR_TIER}
+                                popularLabel={t.pricing.popular}
+                                ctaLabel={t.pricing.cta}
+                                delay={i * 100}
+                            />
+                        ))}
+                    </div>
+                )}
             </div>
         </section>
     );
@@ -986,7 +1072,7 @@ export default function LandingPage() {
         try { localStorage.setItem('reviewpost-lang', l); } catch { /* ignore */ }
     };
 
-    const t = T[lang];
+    const t = T[lang] as TKeys;
     const isRtl = lang === 'AR';
 
     if (status === 'loading') return null;
@@ -998,7 +1084,7 @@ export default function LandingPage() {
                 <HeroSection t={t} isRtl={isRtl} />
                 <HowItWorksSection t={t} />
                 <TemplatesSection t={t} />
-                <PricingSection t={t} />
+                <PricingSection t={t} lang={lang} />
                 <WhoForSection t={t} />
                 <FAQSection t={t} />
             </main>

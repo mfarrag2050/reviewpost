@@ -22,10 +22,10 @@ export const authConfig: NextAuthConfig = {
         // Expose custom JWT fields onto session in edge context
         async session({ session, token }) {
             if (token) {
-                session.user.userId = token.userId as string | undefined;
-                session.user.plan = token.plan as string | undefined;
-                session.user.aiMode = token.aiMode as string | undefined;
-                session.user.language = token.language as string | undefined;
+                session.user.userId = (token.userId ?? '') as string;
+                session.user.plan = (token.plan ?? 'STARTER') as string;
+                session.user.aiMode = (token.aiMode ?? 'SHARED') as string;
+                session.user.language = (token.language ?? 'AR') as string;
             }
             return session;
         },

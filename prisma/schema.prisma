@@ -15,7 +15,7 @@ enum Role {
   USER
 }
 
-enum Plan {
+enum PlanTier {
   STARTER
   GROWTH
   AGENCY
@@ -81,21 +81,46 @@ enum TemplateCategory {
 
 // ─── Models ──────────────────────────────────────────────
 
-model User {
-  id             String    @id @default(cuid())
-  email          String    @unique
-  name           String?
-  role           Role      @default(USER)
-  plan           Plan      @default(STARTER)
-  language       Language  @default(AR)
-  aiMode         AiMode    @default(SHARED) @map("ai_mode")
-  ownApiKey      String?   @map("own_api_key")
-  dedicatedKey   String?   @map("dedicated_key")
-  createdAt      DateTime  @default(now()) @map("created_at")
-  updatedAt      DateTime  @updatedAt @map("updated_at")
+model Plan {
+  id               String   @id @default(cuid())
+  name             String   // STARTER | GROWTH | AGENCY
+  displayName      String   @map("display_name")
+  price            Decimal  @db.Decimal(10, 2)
+  currency         String   // USD | SAR | TL
+  interval         String   // MONTHLY | YEARLY
+  postsLimit       Int      @map("posts_limit")
+  reviewsLimit     Int      @map("reviews_limit")
+  storageLimit     BigInt   @map("storage_limit")
+  platformsAllowed Json     @map("platforms_allowed")
+  templatesLimit   Int      @map("templates_limit")
+  features         Json
+  isActive         Boolean  @default(true) @map("is_active")
+  sortOrder        Int      @default(0) @map("sort_order")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
 
-  businesses     Business[]
-  usages         Usage[]
+  users User[]
+
+  @@unique([name, currency, interval])
+  @@map("plans")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String?
+  role         Role     @default(USER)
+  planId       String?  @map("plan_id")
+  language     Language @default(AR)
+  aiMode       AiMode   @default(SHARED) @map("ai_mode")
+  ownApiKey    String?  @map("own_api_key")
+  dedicatedKey String?  @map("dedicated_key")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  currentPlan Plan?      @relation(fields: [planId], references: [id], onDelete: SetNull)
+  businesses  Business[]
+  usages      Usage[]
 
   @@map("users")
 }

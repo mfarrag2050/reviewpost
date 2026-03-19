@@ -19,7 +19,23 @@ export async function GET() {
     const [user, business, usage] = await Promise.all([
         prisma.user.findUnique({
             where: { id: userId },
-            select: { id: true, plan: true, aiMode: true, language: true, ownApiKey: true },
+            select: {
+                id: true,
+                aiMode: true,
+                language: true,
+                ownApiKey: true,
+                currentPlan: {
+                    select: {
+                        name: true,
+                        displayName: true,
+                        postsLimit: true,
+                        reviewsLimit: true,
+                        price: true,
+                        currency: true,
+                        interval: true,
+                    },
+                },
+            },
         }),
         prisma.business.findFirst({
             where: { userId },
@@ -34,7 +50,10 @@ export async function GET() {
     return NextResponse.json({
         user: {
             id: user?.id,
-            plan: user?.plan ?? 'STARTER',
+            plan: user?.currentPlan?.name ?? 'STARTER',
+            planDisplayName: user?.currentPlan?.displayName ?? 'Starter',
+            postsLimit: user?.currentPlan?.postsLimit ?? 30,
+            reviewsLimit: user?.currentPlan?.reviewsLimit ?? 100,
             aiMode: user?.aiMode ?? 'SHARED',
             language: user?.language ?? 'AR',
             hasByokKey: !!user?.ownApiKey,
@@ -88,9 +107,10 @@ export async function PUT(req: NextRequest) {
 
                 const existing = (business.brandColors as Record<string, unknown>) ?? {};
 
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 await prisma.business.update({
                     where: { id: business.id },
-                    data: { brandColors: { ...existing, ...body.data } },
+                    data: { brandColors: { ...existing, ...body.data } as any },
                 });
 
                 return NextResponse.json({ success: true });

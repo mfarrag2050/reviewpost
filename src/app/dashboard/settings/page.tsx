@@ -4,7 +4,8 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
 
-const PLAN_LIMITS: Record<string, number> = { STARTER: 30, GROWTH: 150, AGENCY: 500 };
+// Fallback limits used if API doesn't return postsLimit (e.g. user has no plan assigned yet)
+const PLAN_LIMITS_FALLBACK: Record<string, number> = { STARTER: 30, GROWTH: 150, AGENCY: 500 };
 const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const DAY_KEYS = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
 
@@ -90,6 +91,8 @@ interface NotifData {
 
 interface AccountData {
     plan: string;
+    planDisplayName: string;
+    postsLimit: number;
     aiMode: string;
     hasByokKey: boolean;
     postsGenerated: number;
@@ -969,7 +972,7 @@ function AccountTab({
     const [savingKey, setSavingKey] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-    const limit = PLAN_LIMITS[initialData.plan] ?? 30;
+    const limit = initialData.postsLimit || PLAN_LIMITS_FALLBACK[initialData.plan] || 30;
     const progress = Math.min(100, (initialData.postsGenerated / limit) * 100);
     const modeInfo = AI_MODE_INFO[initialData.aiMode] ?? AI_MODE_INFO.SHARED;
 
@@ -993,7 +996,7 @@ function AccountTab({
                                 PLAN_STYLES[initialData.plan] ?? PLAN_STYLES.STARTER
                             }`}
                         >
-                            {initialData.plan}
+                            {initialData.planDisplayName || initialData.plan}
                         </span>
                     </div>
                     <a
@@ -1370,6 +1373,8 @@ export default function SettingsPage() {
 
     const accountData: AccountData = {
         plan: settings?.user.plan ?? 'STARTER',
+        planDisplayName: (settings?.user as { planDisplayName?: string })?.planDisplayName ?? settings?.user.plan ?? 'Starter',
+        postsLimit: (settings?.user as { postsLimit?: number })?.postsLimit ?? PLAN_LIMITS_FALLBACK[settings?.user.plan ?? 'STARTER'] ?? 30,
         aiMode: settings?.user.aiMode ?? 'SHARED',
         hasByokKey: settings?.user.hasByokKey ?? false,
         postsGenerated: settings?.usage.postsGenerated ?? 0,

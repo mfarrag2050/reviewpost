@@ -15,7 +15,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                     create: {
                         email: user.email,
                         name: user.name ?? null,
-                        plan: 'STARTER',
                         aiMode: 'SHARED',
                         language: 'AR',
                     },
@@ -32,11 +31,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             if (user?.email) {
                 const dbUser = await prisma.user.findUnique({
                     where: { email: user.email },
-                    select: { id: true, plan: true, aiMode: true, language: true },
+                    select: {
+                        id: true,
+                        aiMode: true,
+                        language: true,
+                        currentPlan: { select: { name: true } },
+                    },
                 });
                 if (dbUser) {
                     token.userId = dbUser.id;
-                    token.plan = dbUser.plan;
+                    token.plan = dbUser.currentPlan?.name ?? 'STARTER';
                     token.aiMode = dbUser.aiMode;
                     token.language = dbUser.language;
                 }
