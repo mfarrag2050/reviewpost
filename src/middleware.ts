@@ -62,6 +62,7 @@ export default auth(function middleware(req: NextAuthRequest) {
     const isPublicApi =
         nextUrl.pathname.startsWith('/api/plans') ||
         nextUrl.pathname.startsWith('/api/health') ||
+        nextUrl.pathname.startsWith('/api/tools') ||
         nextUrl.pathname.startsWith('/api/billing/webhook') ||
         nextUrl.pathname.startsWith('/api/billing/moyasar/callback') ||
         nextUrl.pathname.startsWith('/api/email/send');
