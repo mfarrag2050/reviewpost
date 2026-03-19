@@ -3,6 +3,10 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/auth';
+import { getLogEntries, createLogger } from '@/lib/monitoring/logger';
+import { healthChecker } from '@/lib/monitoring/health';
+
+const log = createLogger('AdminSystem');
 
 const SETTING_KEYS = [
     'ai_model',
@@ -17,30 +21,6 @@ const SETTING_KEYS = [
 
 type SettingKey = typeof SETTING_KEYS[number];
 
-// In-memory log buffer (recent entries, rotated every restart)
-const logBuffer: { timestamp: string; level: string; message: string }[] = [];
-const MAX_LOGS = 100;
-
-// Hook into console for server-side log capture
-if (typeof window === 'undefined' && !(global as Record<string, unknown>).__adminLogHooked) {
-    (global as Record<string, unknown>).__adminLogHooked = true;
-    const origWarn = console.warn.bind(console);
-    const origError = console.error.bind(console);
-    console.warn = (...args: unknown[]) => {
-        addLog('WARN', args.map(String).join(' '));
-        origWarn(...args);
-    };
-    console.error = (...args: unknown[]) => {
-        addLog('ERROR', args.map(String).join(' '));
-        origError(...args);
-    };
-}
-
-function addLog(level: string, message: string) {
-    logBuffer.unshift({ timestamp: new Date().toISOString(), level, message });
-    if (logBuffer.length > MAX_LOGS) logBuffer.splice(MAX_LOGS);
-}
-
 export async function GET() {
     try {
         await requireAdmin();
@@ -49,18 +29,25 @@ export async function GET() {
     }
 
     try {
-        const rows = await prisma.systemSetting.findMany({
-            where: { key: { in: [...SETTING_KEYS] } },
-        });
+        const [rows, health] = await Promise.all([
+            prisma.systemSetting.findMany({
+                where: { key: { in: [...SETTING_KEYS] } },
+            }),
+            healthChecker.getFullHealth(),
+        ]);
 
         const settings: Partial<Record<SettingKey, string>> = {};
         for (const row of rows) {
             settings[row.key as SettingKey] = row.value;
         }
 
-        return NextResponse.json({ settings, logs: logBuffer.slice(0, MAX_LOGS) });
+        return NextResponse.json({
+            settings,
+            health,
+            logs: getLogEntries(100),
+        });
     } catch (err) {
-        console.error('[admin/system GET]', err);
+        log.error('Failed to fetch system data', {}, err);
         return NextResponse.json({ error: 'Internal error' }, { status: 500 });
     }
 }
@@ -79,7 +66,6 @@ export async function PATCH(req: NextRequest) {
             return NextResponse.json({ error: 'settings object required' }, { status: 400 });
         }
 
-        // Upsert each setting
         await Promise.all(
             Object.entries(body.settings)
                 .filter(([key]) => SETTING_KEYS.includes(key as SettingKey))
@@ -92,11 +78,13 @@ export async function PATCH(req: NextRequest) {
                 )
         );
 
-        addLog('INFO', `System settings updated`);
+        log.info('System settings updated', {
+            keys: Object.keys(body.settings).filter((k) => SETTING_KEYS.includes(k as SettingKey)),
+        });
 
         return NextResponse.json({ success: true });
     } catch (err) {
-        console.error('[admin/system PATCH]', err);
+        log.error('Failed to update system settings', {}, err);
         return NextResponse.json({ error: 'Internal error' }, { status: 500 });
     }
 }

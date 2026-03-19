@@ -61,6 +61,7 @@ export default auth(function middleware(req: NextAuthRequest) {
     // Public API routes — no user auth required (protected by other means)
     const isPublicApi =
         nextUrl.pathname.startsWith('/api/plans') ||
+        nextUrl.pathname.startsWith('/api/health') ||
         nextUrl.pathname.startsWith('/api/billing/webhook') ||
         nextUrl.pathname.startsWith('/api/billing/moyasar/callback') ||
         nextUrl.pathname.startsWith('/api/email/send');
