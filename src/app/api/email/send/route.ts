@@ -3,12 +3,13 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { emailService, type EmailType } from '@/lib/email/resend';
+import { timingSafeEqual } from '@/lib/security';
 
 /**
  * POST /api/email/send
  *
  * Internal endpoint for N8N and other services to trigger email sends.
- * Protected by API key (not user auth).
+ * Protected by API key (not user auth) with timing-safe comparison.
  *
  * Headers:
  *   x-api-key: INTERNAL_API_KEY
@@ -20,7 +21,7 @@ export async function POST(req: NextRequest) {
     const apiKey = req.headers.get('x-api-key');
     const expectedKey = process.env.INTERNAL_API_KEY;
 
-    if (!expectedKey || apiKey !== expectedKey) {
+    if (!expectedKey || !apiKey || !timingSafeEqual(apiKey, expectedKey)) {
         return NextResponse.json({ error: 'Invalid API key' }, { status: 401 });
     }
 

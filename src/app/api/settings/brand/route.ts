@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
+import { isValidUrl, isValidHexColor, sanitizeInput } from '@/lib/security';
 
 /**
  * PUT /api/settings/brand
@@ -44,12 +45,27 @@ export async function PUT(req: NextRequest) {
         if (body.secondaryColor !== undefined) updatedColors.secondary = body.secondaryColor;
         if (body.selectedTemplate !== undefined) updatedColors.selectedTemplate = body.selectedTemplate;
 
+        // Validate colors
+        if (body.primaryColor !== undefined && !isValidHexColor(body.primaryColor)) {
+            return NextResponse.json({ error: 'primaryColor must be valid hex (#RRGGBB)' }, { status: 400 });
+        }
+        if (body.secondaryColor !== undefined && !isValidHexColor(body.secondaryColor)) {
+            return NextResponse.json({ error: 'secondaryColor must be valid hex (#RRGGBB)' }, { status: 400 });
+        }
+
         // Build business update payload
         const businessUpdate: Record<string, unknown> = { brandColors: updatedColors };
         if (body.businessName !== undefined && body.businessName.trim()) {
-            businessUpdate.name = body.businessName.trim();
+            const name = sanitizeInput(body.businessName.trim());
+            if (name.length > 200) {
+                return NextResponse.json({ error: 'businessName must be 200 characters or fewer' }, { status: 400 });
+            }
+            businessUpdate.name = name;
         }
         if (body.logoUrl !== undefined) {
+            if (body.logoUrl && !isValidUrl(body.logoUrl, true)) {
+                return NextResponse.json({ error: 'logoUrl must be a valid HTTP(S) URL or data:image' }, { status: 400 });
+            }
             businessUpdate.logoUrl = body.logoUrl;
         }
 

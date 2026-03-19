@@ -1,15 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { TemplateData, TemplateId } from './types';
-
-function escapeHtml(str: string): string {
-    return str
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
-}
+import { escapeHtml } from '@/lib/security';
 
 /** Generate ★ string from numeric rating */
 function buildStars(rating: number): string {

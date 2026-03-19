@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
+import { isValidUrl, isValidHexColor, sanitizeInput } from '@/lib/security';
 import type { OnboardingPayload } from '@/lib/onboarding/types';
 
 /**
@@ -37,13 +38,31 @@ export async function POST(req: NextRequest) {
         switch (step) {
             // ── Step 2: Create/update Business with brand info
             case 2: {
-                if (!data.businessName) {
+                if (!data.businessName || typeof data.businessName !== 'string') {
                     return NextResponse.json({ error: 'businessName is required' }, { status: 400 });
                 }
 
+                const businessName = sanitizeInput(data.businessName.trim());
+                if (businessName.length > 200) {
+                    return NextResponse.json({ error: 'businessName must be 200 characters or fewer' }, { status: 400 });
+                }
+
+                // التحقق من صلاحية logoUrl
+                const logoUrl = data.logoUrl ?? '';
+                if (logoUrl && !isValidUrl(logoUrl, true)) {
+                    return NextResponse.json({ error: 'logoUrl must be a valid HTTP(S) URL or data:image' }, { status: 400 });
+                }
+
+                // التحقق من صلاحية الألوان
+                const primaryColor = data.primaryColor ?? '#7C3AED';
+                const secondaryColor = data.secondaryColor ?? '#4F46E5';
+                if (!isValidHexColor(primaryColor) || !isValidHexColor(secondaryColor)) {
+                    return NextResponse.json({ error: 'Colors must be valid hex format (#RRGGBB)' }, { status: 400 });
+                }
+
                 const brandColors = {
-                    primary: data.primaryColor ?? '#7C3AED',
-                    secondary: data.secondaryColor ?? '#4F46E5',
+                    primary: primaryColor,
+                    secondary: secondaryColor,
                     selectedTemplate: data.selectedTemplate,
                 };
 
@@ -52,9 +71,9 @@ export async function POST(req: NextRequest) {
                     business = await prisma.business.update({
                         where: { id: businessId },
                         data: {
-                            name: data.businessName,
+                            name: businessName,
                             type: (data.businessType as never) ?? 'OTHER',
-                            logoUrl: data.logoUrl,
+                            logoUrl,
                             brandColors,
                         },
                     });
@@ -62,9 +81,9 @@ export async function POST(req: NextRequest) {
                     business = await prisma.business.create({
                         data: {
                             userId,
-                            name: data.businessName,
+                            name: businessName,
                             type: (data.businessType as never) ?? 'OTHER',
-                            logoUrl: data.logoUrl ?? '',
+                            logoUrl,
                             brandColors,
                             platform: 'GOOGLE',
                         },
@@ -130,7 +149,7 @@ export async function POST(req: NextRequest) {
         }
     } catch (err) {
         console.error('[/api/onboarding] Error:', err);
-        return NextResponse.json({ error: 'Onboarding save failed', detail: String(err) }, { status: 500 });
+        return NextResponse.json({ error: 'Onboarding save failed' }, { status: 500 });
     }
 }
 
