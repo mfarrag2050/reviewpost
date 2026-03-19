@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import path from 'path';
 import { prisma } from '@/lib/prisma';
+import { auth } from '@/auth';
 import { getImageRenderer, RenderFormat } from '@/lib/templates/renderer';
 import { TemplateId, TemplateData } from '@/lib/templates/types';
 
@@ -22,11 +23,15 @@ const PLATFORM_TO_FORMAT: Record<string, RenderFormat> = {
  */
 export async function POST(req: NextRequest) {
     try {
+        const session = await auth();
+        if (!session?.user?.userId) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
         const body = await req.json() as {
             templateId?: string;
             reviewId?: string;
             platform?: string;
-            businessId?: string; // optional override
         };
 
         const { reviewId, platform = 'INSTAGRAM' } = body;
@@ -43,7 +48,6 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        // Load review + business from DB
         const review = await prisma.review.findUnique({
             where: { id: reviewId },
             include: {
@@ -54,6 +58,7 @@ export async function POST(req: NextRequest) {
                         type: true,
                         logoUrl: true,
                         brandColors: true,
+                        userId: true,
                     },
                 },
             },
@@ -63,8 +68,12 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: `Review ${reviewId} not found` }, { status: 404 });
         }
 
+        if (review.business.userId !== session.user.userId) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
+
         const { business } = review;
-        const resolvedBusinessId = body.businessId ?? business.id;
+        const resolvedBusinessId = business.id;
         const format: RenderFormat = PLATFORM_TO_FORMAT[platform.toUpperCase()] ?? 'INSTAGRAM';
 
         // استخراج الألوان من brandColors JSON أو القيم الافتراضية

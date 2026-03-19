@@ -27,7 +27,7 @@ export class HealthChecker {
     async checkDatabase(): Promise<HealthCheckResult> {
         try {
             const { latencyMs } = await measureLatency(async () => {
-                await prisma.$queryRawUnsafe('SELECT 1');
+                await prisma.$queryRaw`SELECT 1`;
             });
             return { service: 'postgresql', status: 'ok', latencyMs };
         } catch (err) {

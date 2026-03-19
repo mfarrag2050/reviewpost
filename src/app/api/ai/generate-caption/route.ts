@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PostPlatform } from '@/generated/prisma';
 import { prisma } from '@/lib/prisma';
+import { auth } from '@/auth';
 import { getAIKey } from '@/lib/ai/key-router';
 import { CaptionGenerator } from '@/lib/ai/caption-generator';
 import { CaptionRequest } from '@/lib/ai/types';
@@ -11,11 +12,16 @@ const log = createLogger('CaptionGenerator');
 
 /**
  * POST /api/ai/generate-caption
- * Body: { reviewId, platform, language?, includeHashtags?, includeCTA?, userId? }
+ * Body: { reviewId, platform, language?, includeHashtags?, includeCTA? }
  */
 export const POST = wrapApiHandler('/api/ai/generate-caption', async (req: NextRequest) => {
-    const body = await req.json() as CaptionRequest & { userId?: string };
-    const { reviewId, platform, language, includeHashtags, includeCTA, userId } = body;
+    const session = await auth();
+    if (!session?.user?.userId) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const body = await req.json() as CaptionRequest;
+    const { reviewId, platform, language, includeHashtags, includeCTA } = body;
 
     if (!reviewId || typeof reviewId !== 'string') {
         return NextResponse.json({ error: 'reviewId is required' }, { status: 400 });
@@ -39,7 +45,11 @@ export const POST = wrapApiHandler('/api/ai/generate-caption', async (req: NextR
         return NextResponse.json({ error: `Review ${reviewId} not found` }, { status: 404 });
     }
 
-    const resolvedUserId = userId ?? review.business.userId;
+    if (review.business.userId !== session.user.userId) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const resolvedUserId = review.business.userId;
 
     const user = await prisma.user.findUnique({
         where: { id: resolvedUserId },

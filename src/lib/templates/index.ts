@@ -2,6 +2,15 @@ import fs from 'fs';
 import path from 'path';
 import { TemplateData, TemplateId } from './types';
 
+function escapeHtml(str: string): string {
+    return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 /** Generate ★ string from numeric rating */
 function buildStars(rating: number): string {
     const filled = Math.round(Math.max(0, Math.min(5, rating)));
@@ -60,21 +69,21 @@ export function getTemplate(templateId: TemplateId, data: TemplateData): string 
 
     // Replace all template variables
     const replacements: Record<string, string> = {
-        '{{brand_primary}}': data.brand_primary,
-        '{{brand_secondary}}': data.brand_secondary,
-        '{{brand_text}}': data.brand_text,
-        '{{font_family}}': fontFamily,
-        '{{review_text}}': reviewText,
-        '{{author_name}}': data.author_name,
-        '{{author_initial}}': authorInitial,
+        '{{brand_primary}}': escapeHtml(data.brand_primary),
+        '{{brand_secondary}}': escapeHtml(data.brand_secondary),
+        '{{brand_text}}': escapeHtml(data.brand_text),
+        '{{font_family}}': escapeHtml(fontFamily),
+        '{{review_text}}': escapeHtml(reviewText),
+        '{{author_name}}': escapeHtml(data.author_name),
+        '{{author_initial}}': escapeHtml(authorInitial),
         '{{rating}}': String(data.rating),
         '{{stars}}': stars,
-        '{{business_name}}': data.business_name,
-        '{{logo_url}}': data.logo_url,
-        '{{source}}': source,
-        '{{product_name}}': data.product_name ?? '',
-        '{{product_image_url}}': data.product_image_url ?? '',
-        '{{product_link}}': data.product_link ?? '#',
+        '{{business_name}}': escapeHtml(data.business_name),
+        '{{logo_url}}': escapeHtml(data.logo_url),
+        '{{source}}': escapeHtml(source),
+        '{{product_name}}': escapeHtml(data.product_name ?? ''),
+        '{{product_image_url}}': escapeHtml(data.product_image_url ?? ''),
+        '{{product_link}}': escapeHtml(data.product_link ?? '#'),
     };
 
     for (const [token, value] of Object.entries(replacements)) {

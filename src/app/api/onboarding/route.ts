@@ -24,6 +24,16 @@ export async function POST(req: NextRequest) {
         const body = await req.json() as OnboardingPayload;
         const { step, data, businessId } = body;
 
+        if (businessId) {
+            const ownerCheck = await prisma.business.findFirst({
+                where: { id: businessId, userId },
+                select: { id: true },
+            });
+            if (!ownerCheck) {
+                return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+            }
+        }
+
         switch (step) {
             // ── Step 2: Create/update Business with brand info
             case 2: {
