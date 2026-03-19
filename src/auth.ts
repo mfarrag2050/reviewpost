@@ -33,6 +33,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                     where: { email: user.email },
                     select: {
                         id: true,
+                        role: true,
                         aiMode: true,
                         language: true,
                         currentPlan: { select: { name: true } },
@@ -40,6 +41,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                 });
                 if (dbUser) {
                     token.userId = dbUser.id;
+                    token.role = dbUser.role;
                     token.plan = dbUser.currentPlan?.name ?? 'STARTER';
                     token.aiMode = dbUser.aiMode;
                     token.language = dbUser.language;
@@ -51,6 +53,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         async session({ session, token }) {
             if (token) {
                 session.user.userId = token.userId as string;
+                session.user.role = (token.role ?? 'USER') as string;
                 session.user.plan = token.plan as string;
                 session.user.aiMode = token.aiMode as string;
                 session.user.language = token.language as string;
