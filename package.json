@@ -21,7 +21,8 @@
     "openai": "^6.32.0",
     "puppeteer": "^24.39.1",
     "react": "^18",
-    "react-dom": "^18"
+    "react-dom": "^18",
+    "stripe": "^20.4.1"
   },
   "prisma": {
     "seed": "ts-node --project tsconfig.seed.json prisma/seed.ts"

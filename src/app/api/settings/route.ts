@@ -16,7 +16,7 @@ export async function GET() {
     const now = new Date();
     const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
-    const [user, business, usage] = await Promise.all([
+    const [user, business, usage, activeSubscription] = await Promise.all([
         prisma.user.findUnique({
             where: { id: userId },
             select: {
@@ -45,6 +45,19 @@ export async function GET() {
         prisma.usage.findUnique({
             where: { userId_month: { userId, month } },
         }),
+        prisma.subscription.findFirst({
+            where: {
+                userId,
+                status: { in: ['ACTIVE', 'TRIALING', 'PAST_DUE'] },
+            },
+            orderBy: { createdAt: 'desc' },
+            select: {
+                stripeSubscriptionId: true,
+                status: true,
+                cancelAtPeriodEnd: true,
+                currentPeriodEnd: true,
+            },
+        }),
     ]);
 
     return NextResponse.json({
@@ -57,6 +70,10 @@ export async function GET() {
             aiMode: user?.aiMode ?? 'SHARED',
             language: user?.language ?? 'AR',
             hasByokKey: !!user?.ownApiKey,
+            hasStripeSubscription: !!activeSubscription?.stripeSubscriptionId,
+            subscriptionStatus: activeSubscription?.status ?? null,
+            cancelAtPeriodEnd: activeSubscription?.cancelAtPeriodEnd ?? false,
+            currentPeriodEnd: activeSubscription?.currentPeriodEnd?.toISOString() ?? null,
         },
         business: business
             ? {

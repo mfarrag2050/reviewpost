@@ -59,7 +59,10 @@ export default auth(function middleware(req: NextAuthRequest) {
     }
 
     // Public API routes — no auth required
-    const isPublicApi = nextUrl.pathname.startsWith('/api/plans');
+    const isPublicApi =
+        nextUrl.pathname.startsWith('/api/plans') ||
+        nextUrl.pathname.startsWith('/api/billing/webhook') ||
+        nextUrl.pathname.startsWith('/api/billing/moyasar/callback');
 
     // Protect other API routes
     if (isApiRoute && !isLoggedIn && !isPublicApi) {

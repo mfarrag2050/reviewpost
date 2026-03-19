@@ -97,6 +97,10 @@ interface AccountData {
     hasByokKey: boolean;
     postsGenerated: number;
     postsPublished: number;
+    hasStripeSubscription: boolean;
+    subscriptionStatus: string | null;
+    cancelAtPeriodEnd: boolean;
+    currentPeriodEnd: string | null;
 }
 
 // ─── Shared UI Primitives ─────────────────────────────────────────────────────
@@ -971,6 +975,9 @@ function AccountTab({
     const [showKey, setShowKey] = useState(false);
     const [savingKey, setSavingKey] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [billingLoading, setBillingLoading] = useState<'upgrade' | 'portal' | null>(null);
+    const [showPlanPicker, setShowPlanPicker] = useState(false);
+    const [availablePlans, setAvailablePlans] = useState<{ id: string; name: string; displayName: string; price: number; currency: string; interval: string; postsLimit: number }[]>([]);
 
     const limit = initialData.postsLimit || PLAN_LIMITS_FALLBACK[initialData.plan] || 30;
     const progress = Math.min(100, (initialData.postsGenerated / limit) * 100);
@@ -982,6 +989,59 @@ function AccountTab({
         await onSave({ ownApiKey: byokKey.trim() });
         setSavingKey(false);
         setByokKey('');
+    };
+
+    const handleUpgrade = async () => {
+        setBillingLoading('upgrade');
+        try {
+            const plansRes = await fetch('/api/plans');
+            const plansData = await plansRes.json();
+            setAvailablePlans(plansData.plans ?? []);
+            setShowPlanPicker(true);
+        } catch {
+            // handled below
+        } finally {
+            setBillingLoading(null);
+        }
+    };
+
+    const handleCheckout = async (planId: string) => {
+        setBillingLoading('upgrade');
+        setShowPlanPicker(false);
+        try {
+            const res = await fetch('/api/billing/checkout', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ planId }),
+            });
+            const data = await res.json();
+            if (data.url) {
+                window.location.href = data.url;
+            } else {
+                throw new Error(data.error ?? 'Checkout failed');
+            }
+        } catch (e) {
+            alert(e instanceof Error ? e.message : 'Failed to start checkout');
+        } finally {
+            setBillingLoading(null);
+        }
+    };
+
+    const handlePortal = async () => {
+        setBillingLoading('portal');
+        try {
+            const res = await fetch('/api/billing/portal', { method: 'POST' });
+            const data = await res.json();
+            if (data.url) {
+                window.location.href = data.url;
+            } else {
+                throw new Error(data.error ?? 'Failed to open portal');
+            }
+        } catch (e) {
+            alert(e instanceof Error ? e.message : 'Failed to open billing portal');
+        } finally {
+            setBillingLoading(null);
+        }
     };
 
     return (
@@ -998,27 +1058,79 @@ function AccountTab({
                         >
                             {initialData.planDisplayName || initialData.plan}
                         </span>
+                        {initialData.cancelAtPeriodEnd && initialData.currentPeriodEnd && (
+                            <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                                Cancels on {new Date(initialData.currentPeriodEnd).toLocaleDateString()}
+                            </p>
+                        )}
+                        {initialData.subscriptionStatus === 'PAST_DUE' && (
+                            <p className="text-xs text-red-600 dark:text-red-400 mt-1 font-semibold">
+                                Payment past due — please update your payment method
+                            </p>
+                        )}
                     </div>
-                    <a
-                        href="/dashboard/billing"
-                        className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold transition-colors shadow-sm shadow-indigo-200 dark:shadow-indigo-900/40"
-                    >
-                        Upgrade Plan
-                        <svg
-                            className="w-4 h-4"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <button
+                            onClick={handleUpgrade}
+                            disabled={billingLoading === 'upgrade'}
+                            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold transition-colors shadow-sm shadow-indigo-200 dark:shadow-indigo-900/40 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M13 7l5 5m0 0l-5 5m5-5H6"
-                            />
-                        </svg>
-                    </a>
+                            {billingLoading === 'upgrade' ? 'Loading…' : 'Upgrade Plan'}
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                            </svg>
+                        </button>
+                        {initialData.hasStripeSubscription && (
+                            <button
+                                onClick={handlePortal}
+                                disabled={billingLoading === 'portal'}
+                                className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {billingLoading === 'portal' ? 'Loading…' : 'Manage Subscription'}
+                            </button>
+                        )}
+                    </div>
                 </div>
+
+                {/* Plan Picker Modal */}
+                {showPlanPicker && availablePlans.length > 0 && (
+                    <div className="mb-5 bg-gray-50 dark:bg-gray-700/50 rounded-xl p-4">
+                        <div className="flex items-center justify-between mb-3">
+                            <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-200">Choose a Plan</h4>
+                            <button onClick={() => setShowPlanPicker(false)} className="text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+                                Cancel
+                            </button>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            {availablePlans
+                                .filter((p) => p.interval === 'MONTHLY')
+                                .map((plan) => (
+                                <button
+                                    key={plan.id}
+                                    onClick={() => handleCheckout(plan.id)}
+                                    disabled={plan.name === initialData.plan}
+                                    className={`p-4 rounded-xl border-2 text-left transition-all ${
+                                        plan.name === initialData.plan
+                                            ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 cursor-default'
+                                            : 'border-gray-200 dark:border-gray-600 hover:border-indigo-300 dark:hover:border-indigo-700 cursor-pointer'
+                                    }`}
+                                >
+                                    <div className="flex items-center justify-between mb-2">
+                                        <span className="text-sm font-bold text-gray-900 dark:text-white">{plan.displayName}</span>
+                                        {plan.name === initialData.plan && (
+                                            <span className="text-xs bg-indigo-600 text-white px-2 py-0.5 rounded-full">Current</span>
+                                        )}
+                                    </div>
+                                    <p className="text-lg font-extrabold text-gray-900 dark:text-white">
+                                        {plan.currency === 'SAR' ? '﷼' : plan.currency === 'TL' ? '₺' : '$'}{plan.price}
+                                        <span className="text-xs font-normal text-gray-500">/mo</span>
+                                    </p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{plan.postsLimit} posts/month</p>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
 
                 <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-4">
                     <div className="flex items-center justify-between mb-2.5">
@@ -1371,14 +1483,27 @@ export default function SettingsPage() {
         usageLimit100: bc.notifications?.usageLimit100 ?? true,
     };
 
+    const userExt = settings?.user as {
+        planDisplayName?: string;
+        postsLimit?: number;
+        hasStripeSubscription?: boolean;
+        subscriptionStatus?: string | null;
+        cancelAtPeriodEnd?: boolean;
+        currentPeriodEnd?: string | null;
+    } | undefined;
+
     const accountData: AccountData = {
         plan: settings?.user.plan ?? 'STARTER',
-        planDisplayName: (settings?.user as { planDisplayName?: string })?.planDisplayName ?? settings?.user.plan ?? 'Starter',
-        postsLimit: (settings?.user as { postsLimit?: number })?.postsLimit ?? PLAN_LIMITS_FALLBACK[settings?.user.plan ?? 'STARTER'] ?? 30,
+        planDisplayName: userExt?.planDisplayName ?? settings?.user.plan ?? 'Starter',
+        postsLimit: userExt?.postsLimit ?? PLAN_LIMITS_FALLBACK[settings?.user.plan ?? 'STARTER'] ?? 30,
         aiMode: settings?.user.aiMode ?? 'SHARED',
         hasByokKey: settings?.user.hasByokKey ?? false,
         postsGenerated: settings?.usage.postsGenerated ?? 0,
         postsPublished: settings?.usage.postsPublished ?? 0,
+        hasStripeSubscription: userExt?.hasStripeSubscription ?? false,
+        subscriptionStatus: userExt?.subscriptionStatus ?? null,
+        cancelAtPeriodEnd: userExt?.cancelAtPeriodEnd ?? false,
+        currentPeriodEnd: userExt?.currentPeriodEnd ?? null,
     };
 
     return (

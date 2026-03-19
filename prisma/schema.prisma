@@ -79,6 +79,14 @@ enum TemplateCategory {
   STORY
 }
 
+enum SubscriptionStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  TRIALING
+  INCOMPLETE
+}
+
 // ─── Models ──────────────────────────────────────────────
 
 model Plan {
@@ -99,7 +107,8 @@ model Plan {
   createdAt        DateTime @default(now()) @map("created_at")
   updatedAt        DateTime @updatedAt @map("updated_at")
 
-  users User[]
+  users         User[]
+  subscriptions Subscription[]
 
   @@unique([name, currency, interval])
   @@map("plans")
@@ -120,9 +129,10 @@ model User {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
-  currentPlan Plan?      @relation(fields: [planId], references: [id], onDelete: SetNull)
-  businesses  Business[]
-  usages      Usage[]
+  currentPlan   Plan?          @relation(fields: [planId], references: [id], onDelete: SetNull)
+  businesses    Business[]
+  usages        Usage[]
+  subscriptions Subscription[]
 
   @@map("users")
 }
@@ -225,6 +235,29 @@ model Template {
   posts           Post[]
 
   @@map("templates")
+}
+
+model Subscription {
+  id                   String             @id @default(cuid())
+  userId               String             @map("user_id")
+  planId               String             @map("plan_id")
+  stripeSubscriptionId String?            @unique @map("stripe_subscription_id")
+  stripeCustomerId     String?            @map("stripe_customer_id")
+  moyasarPaymentId     String?            @map("moyasar_payment_id")
+  status               SubscriptionStatus @default(ACTIVE)
+  currentPeriodStart   DateTime?          @map("current_period_start")
+  currentPeriodEnd     DateTime?          @map("current_period_end")
+  cancelAtPeriodEnd    Boolean            @default(false) @map("cancel_at_period_end")
+  trialEnd             DateTime?          @map("trial_end")
+  createdAt            DateTime           @default(now()) @map("created_at")
+  updatedAt            DateTime           @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan Plan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([stripeSubscriptionId])
+  @@map("subscriptions")
 }
 
 model SystemSetting {
