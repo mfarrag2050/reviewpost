@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { signOut } from 'next-auth/react';
+import { useBrand } from '@/components/brand/BrandProvider';
 
 interface NavItem {
     label: string;
@@ -153,16 +154,37 @@ function SidebarContent({
         .toUpperCase()
         .slice(0, 2);
 
+    const { logoUrl, businessName } = useBrand();
+
     return (
         <div className="flex flex-col h-full bg-white dark:bg-gray-900 border-r border-gray-100 dark:border-gray-800">
-            {/* Logo */}
+            {/* Logo — يعرض لوغو البزنس إذا موجود */}
             <div className="flex items-center gap-2.5 px-5 h-16 border-b border-gray-100 dark:border-gray-800 flex-shrink-0">
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center flex-shrink-0">
-                    <svg className="w-4.5 h-4.5 text-white" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z" />
-                    </svg>
+                {logoUrl ? (
+                    <img
+                        src={logoUrl}
+                        alt={businessName ?? 'Logo'}
+                        className="w-9 h-9 rounded-full object-cover flex-shrink-0 border-2"
+                        style={{ borderColor: 'var(--brand-primary)' }}
+                    />
+                ) : (
+                    <div
+                        className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
+                        style={{ background: `linear-gradient(135deg, var(--brand-primary), var(--brand-secondary))` }}
+                    >
+                        <svg className="w-4.5 h-4.5 text-white" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z" />
+                        </svg>
+                    </div>
+                )}
+                <div className="min-w-0 flex-1">
+                    <span className="font-bold text-gray-900 dark:text-white text-sm tracking-tight truncate block">
+                        {businessName ?? 'ReviewPost'}
+                    </span>
+                    {businessName && (
+                        <span className="text-[10px] text-gray-400 dark:text-gray-500">ReviewPost</span>
+                    )}
                 </div>
-                <span className="font-bold text-gray-900 dark:text-white text-lg tracking-tight">ReviewPost</span>
                 {onClose && (
                     <button
                         onClick={onClose}
@@ -173,7 +195,7 @@ function SidebarContent({
                 )}
             </div>
 
-            {/* Nav */}
+            {/* Nav — يستخدم brand-primary للـ active state */}
             <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
                 {NAV_ITEMS.map((item) => {
                     const isActive = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href));
@@ -184,14 +206,21 @@ function SidebarContent({
                             onClick={onClose}
                             className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ${
                                 isActive
-                                    ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400'
+                                    ? 'text-white'
                                     : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white'
                             }`}
+                            style={isActive ? {
+                                backgroundColor: 'var(--brand-primary)',
+                                color: 'var(--brand-text, #fff)',
+                            } : undefined}
                         >
-                            <span className={isActive ? 'text-indigo-600 dark:text-indigo-400' : ''}>{item.icon}</span>
+                            <span>{item.icon}</span>
                             {item.label}
                             {isActive && (
-                                <span className="ml-auto w-1.5 h-5 rounded-full bg-indigo-500 dark:bg-indigo-400" />
+                                <span
+                                    className="ml-auto w-1.5 h-5 rounded-full opacity-60"
+                                    style={{ backgroundColor: 'var(--brand-text, #fff)' }}
+                                />
                             )}
                         </Link>
                     );
@@ -219,7 +248,10 @@ function SidebarContent({
                     {user.image ? (
                         <img src={user.image} alt="" className="w-9 h-9 rounded-full flex-shrink-0 object-cover" />
                     ) : (
-                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-400 to-violet-500 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
+                        <div
+                            className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0"
+                            style={{ background: `linear-gradient(135deg, var(--brand-primary), var(--brand-secondary))` }}
+                        >
                             {initials}
                         </div>
                     )}
@@ -284,7 +316,7 @@ export function Sidebar({ user }: SidebarProps) {
             {/* Mobile hamburger button */}
             <button
                 onClick={() => setIsMobileOpen(true)}
-                className="md:hidden fixed top-4 left-4 z-40 p-2 rounded-xl bg-white dark:bg-gray-800 shadow-md border border-gray-100 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+                className="md:hidden fixed top-4 left-4 z-40 p-2 rounded-xl bg-white dark:bg-gray-800 shadow-md border border-gray-100 dark:border-gray-700 text-gray-600 dark:text-gray-300 transition-colors"
                 aria-label="Open navigation"
             >
                 <IconMenu />

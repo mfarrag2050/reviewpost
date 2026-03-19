@@ -63,7 +63,8 @@ function QuickActions() {
             <div className="flex flex-wrap gap-3">
                 <a
                     href="/dashboard/posts/new"
-                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold transition-colors shadow-sm shadow-indigo-200 dark:shadow-indigo-900/40"
+                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-white text-sm font-semibold transition-colors shadow-sm"
+                    style={{ backgroundColor: 'var(--brand-primary, #6366f1)' }}
                 >
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -171,7 +172,7 @@ export default function DashboardPage() {
                     value={stats?.postsGenerated ?? 0}
                     subtitle="This month"
                     icon={<IconGenerate />}
-                    accentClass="bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400"
+                    useBrandAccent
                     loading={loading}
                 />
                 <StatsCard

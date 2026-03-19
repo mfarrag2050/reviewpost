@@ -12,6 +12,8 @@ interface StatsCardProps {
     trend?: Trend;
     icon: React.ReactNode;
     accentClass?: string;
+    /** Use brand CSS variable for accent instead of Tailwind class */
+    useBrandAccent?: boolean;
     loading?: boolean;
 }
 
@@ -22,6 +24,7 @@ export function StatsCard({
     trend,
     icon,
     accentClass = 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400',
+    useBrandAccent = false,
     loading = false,
 }: StatsCardProps) {
     if (loading) {
@@ -67,7 +70,15 @@ export function StatsCard({
                         </div>
                     )}
                 </div>
-                <div className={`p-3 rounded-xl flex-shrink-0 ${accentClass}`}>{icon}</div>
+                <div
+                    className={`p-3 rounded-xl flex-shrink-0 ${useBrandAccent ? '' : accentClass}`}
+                    style={useBrandAccent ? {
+                        backgroundColor: 'var(--brand-primary-light)',
+                        color: 'var(--brand-primary)',
+                    } : undefined}
+                >
+                    {icon}
+                </div>
             </div>
         </div>
     );
