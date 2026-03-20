@@ -65,7 +65,8 @@ export default auth(function middleware(req: NextAuthRequest) {
         nextUrl.pathname.startsWith('/api/tools') ||
         nextUrl.pathname.startsWith('/api/billing/webhook') ||
         nextUrl.pathname.startsWith('/api/billing/moyasar/callback') ||
-        nextUrl.pathname.startsWith('/api/email/send');
+        nextUrl.pathname.startsWith('/api/email/send') ||
+        nextUrl.pathname.startsWith('/api/salla/webhooks');
 
     // Protect other API routes
     if (isApiRoute && !isLoggedIn && !isPublicApi) {
