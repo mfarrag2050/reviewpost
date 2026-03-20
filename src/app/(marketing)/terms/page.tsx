@@ -1,0 +1,534 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+
+type Lang = 'EN' | 'AR' | 'TR';
+
+const LANGS: { code: Lang; flag: string; label: string }[] = [
+    { code: 'EN', flag: '\u{1F1EC}\u{1F1E7}', label: 'EN' },
+    { code: 'AR', flag: '\u{1F1F8}\u{1F1E6}', label: 'AR' },
+    { code: 'TR', flag: '\u{1F1F9}\u{1F1F7}', label: 'TR' },
+];
+
+const LAST_UPDATED = '2026-03-20';
+
+interface Section {
+    title: string;
+    content: string[];
+}
+
+interface Content {
+    title: string;
+    lastUpdated: string;
+    intro: string;
+    sections: Section[];
+    contact: { title: string; text: string };
+}
+
+const CONTENT: Record<Lang, Content> = {
+    EN: {
+        title: 'Terms of Service',
+        lastUpdated: `Last updated: ${LAST_UPDATED}`,
+        intro: 'These Terms of Service ("Terms") govern your access to and use of ReviewPost, operated by PrimeFlow Solutions. By using our platform at reviewpost.app, you agree to be bound by these Terms. If you do not agree, do not use the service.',
+        sections: [
+            {
+                title: '1. Service Description',
+                content: [
+                    'ReviewPost is a SaaS platform that automatically converts customer reviews into branded social media content.',
+                    'The service pulls reviews from connected platforms (Google Business, Salla, Shopify), generates AI-powered captions and branded images, and publishes them to your social media accounts (Instagram, Facebook, X).',
+                    'Features, integrations, and supported platforms may change over time. We will notify users of material changes.',
+                ],
+            },
+            {
+                title: '2. Account Registration',
+                content: [
+                    'You must provide accurate and complete information when creating an account.',
+                    'You are responsible for maintaining the security of your account credentials.',
+                    'You must be at least 18 years old to use this service.',
+                    'One person or legal entity may not maintain more than one free account.',
+                    'You are responsible for all activity that occurs under your account.',
+                ],
+            },
+            {
+                title: '3. Acceptable Use',
+                content: [
+                    'You may only use ReviewPost for lawful purposes and in accordance with these Terms.',
+                    'You must not use the service to publish content that is defamatory, obscene, fraudulent, or violates any third-party rights.',
+                    'You must not attempt to reverse-engineer, decompile, or disassemble any part of the service.',
+                    'You must not use automated tools (bots, scrapers) to access the service beyond the provided APIs.',
+                    'You must not circumvent or attempt to circumvent usage limits or fair-use policies.',
+                    'You must comply with the terms of service of all connected platforms (Google, Meta, Salla, etc.).',
+                    'Violation of these rules may result in immediate account suspension or termination.',
+                ],
+            },
+            {
+                title: '4. Payment Terms',
+                content: [
+                    'ReviewPost offers paid subscription plans billed monthly or annually.',
+                    'All prices are listed in USD, SAR, or TRY depending on your region.',
+                    'Payment is processed securely by Stripe (international) or Moyasar (GCC region).',
+                    'Subscriptions auto-renew unless cancelled before the renewal date.',
+                    'You may cancel your subscription at any time from your account settings. Access continues until the end of the current billing period.',
+                    'Refunds are handled on a case-by-case basis. Contact support within 7 days of charge for refund requests.',
+                    'We reserve the right to change pricing with 30 days advance notice to existing subscribers.',
+                ],
+            },
+            {
+                title: '5. Fair Usage Policy',
+                content: [
+                    'Each subscription plan includes a monthly limit on posts generated (e.g., 30, 150, or 500 per month).',
+                    'Publishing one generated post to multiple platforms counts as a single post.',
+                    'Unused monthly allocations do not roll over to the next month.',
+                    'Users consuming more than 3x the average for their plan tier may be contacted to discuss upgrading.',
+                ],
+            },
+            {
+                title: '6. Intellectual Property',
+                content: [
+                    'You retain ownership of all content you provide to the service (reviews, logos, brand assets).',
+                    'You retain ownership of all content generated by the service on your behalf (captions, images, posts).',
+                    'The ReviewPost platform, including its software, design, and branding, is the intellectual property of PrimeFlow Solutions.',
+                    'You grant us a limited license to use your content solely for the purpose of providing the service (e.g., sending your content to OpenAI for caption generation, publishing to your social media accounts).',
+                    'AI-generated captions are created using OpenAI APIs. Per OpenAI\'s terms, you own the output generated from your inputs.',
+                ],
+            },
+            {
+                title: '7. Data & Privacy',
+                content: [
+                    'Your use of the service is also governed by our Privacy Policy, available at reviewpost.app/privacy.',
+                    'We process your data as described in the Privacy Policy and in compliance with GDPR and Saudi PDPL.',
+                    'We do not sell your data to third parties.',
+                ],
+            },
+            {
+                title: '8. Third-Party Integrations',
+                content: [
+                    'ReviewPost integrates with third-party services including Google, Meta, Salla, Shopify, OpenAI, Stripe, and Moyasar.',
+                    'Your use of these integrations is subject to the respective third-party terms of service.',
+                    'We are not responsible for the availability, accuracy, or policies of third-party services.',
+                    'If a third-party service changes its API or terms, we may need to modify or discontinue related features.',
+                ],
+            },
+            {
+                title: '9. Service Availability',
+                content: [
+                    'We strive for high availability but do not guarantee 100% uptime.',
+                    'We may perform scheduled maintenance with reasonable advance notice.',
+                    'We are not liable for service interruptions caused by factors beyond our control (internet outages, third-party API downtime, force majeure events).',
+                ],
+            },
+            {
+                title: '10. Limitation of Liability',
+                content: [
+                    'To the maximum extent permitted by law, PrimeFlow Solutions shall not be liable for any indirect, incidental, special, consequential, or punitive damages.',
+                    'Our total liability for any claim arising from the service shall not exceed the amount you paid us in the 12 months preceding the claim.',
+                    'We are not liable for any loss of revenue, reputation, or data resulting from published content, third-party service failures, or AI-generated content.',
+                    'You are responsible for reviewing content before publication if accuracy is critical to your business.',
+                ],
+            },
+            {
+                title: '11. Termination',
+                content: [
+                    'You may terminate your account at any time by cancelling your subscription and deleting your account from settings.',
+                    'We may suspend or terminate your account if you violate these Terms, with or without prior notice.',
+                    'Upon termination, your data will be permanently deleted within 30 days as described in our Privacy Policy.',
+                    'Sections that by their nature should survive termination will survive (including Limitation of Liability, Intellectual Property, and Governing Law).',
+                ],
+            },
+            {
+                title: '12. Governing Law',
+                content: [
+                    'These Terms are governed by and construed in accordance with the laws of the Kingdom of Saudi Arabia.',
+                    'Any disputes arising from these Terms shall be resolved through the competent courts in Riyadh, Saudi Arabia.',
+                    'For users in the European Union, nothing in these Terms affects your rights under mandatory consumer protection laws.',
+                ],
+            },
+            {
+                title: '13. Changes to These Terms',
+                content: [
+                    'We may update these Terms from time to time. We will notify you of material changes via email or in-app notification at least 30 days before they take effect.',
+                    'Continued use of the service after changes take effect constitutes acceptance of the updated Terms.',
+                    'If you do not agree to the updated Terms, you must stop using the service and cancel your account.',
+                ],
+            },
+        ],
+        contact: {
+            title: '14. Contact',
+            text: 'If you have questions about these Terms of Service, contact us at:',
+        },
+    },
+    AR: {
+        title: '\u0634\u0631\u0648\u0637 \u0627\u0644\u062E\u062F\u0645\u0629',
+        lastUpdated: `\u0622\u062E\u0631 \u062A\u062D\u062F\u064A\u062B: ${LAST_UPDATED}`,
+        intro: '\u062A\u062D\u0643\u0645 \u0634\u0631\u0648\u0637 \u0627\u0644\u062E\u062F\u0645\u0629 \u0647\u0630\u0647 ("\u0627\u0644\u0634\u0631\u0648\u0637") \u0648\u0635\u0648\u0644\u0643 \u0625\u0644\u0649 \u0648\u0627\u0633\u062A\u062E\u062F\u0627\u0645\u0643 \u0644\u0645\u0646\u0635\u0629 ReviewPost \u0627\u0644\u062A\u064A \u062A\u062F\u064A\u0631\u0647\u0627 PrimeFlow Solutions. \u0628\u0627\u0633\u062A\u062E\u062F\u0627\u0645\u0643 \u0644\u0645\u0646\u0635\u062A\u0646\u0627 \u0639\u0628\u0631 reviewpost.app\u060C \u062A\u0648\u0627\u0641\u0642 \u0639\u0644\u0649 \u0627\u0644\u0627\u0644\u062A\u0632\u0627\u0645 \u0628\u0647\u0630\u0647 \u0627\u0644\u0634\u0631\u0648\u0637. \u0625\u0646 \u0644\u0645 \u062A\u0648\u0627\u0641\u0642\u060C \u0644\u0627 \u062A\u0633\u062A\u062E\u062F\u0645 \u0627\u0644\u062E\u062F\u0645\u0629.',
+        sections: [
+            {
+                title: '\u0661. \u0648\u0635\u0641 \u0627\u0644\u062E\u062F\u0645\u0629',
+                content: [
+                    'ReviewPost \u0645\u0646\u0635\u0629 SaaS \u062A\u062D\u0648\u0651\u0644 \u062A\u0642\u064A\u064A\u0645\u0627\u062A \u0627\u0644\u0639\u0645\u0644\u0627\u0621 \u062A\u0644\u0642\u0627\u0626\u064A\u0627\u064B \u0625\u0644\u0649 \u0645\u062D\u062A\u0648\u0649 \u0633\u0648\u0634\u064A\u0627\u0644 \u0645\u064A\u062F\u064A\u0627 \u0628\u0647\u0648\u064A\u062A\u0643 \u0627\u0644\u0628\u0635\u0631\u064A\u0629.',
+                    '\u062A\u0633\u062D\u0628 \u0627\u0644\u062E\u062F\u0645\u0629 \u0627\u0644\u062A\u0642\u064A\u064A\u0645\u0627\u062A \u0645\u0646 \u0627\u0644\u0645\u0646\u0635\u0627\u062A \u0627\u0644\u0645\u062A\u0635\u0644\u0629 (Google Business\u060C \u0633\u0644\u0629\u060C Shopify)\u060C \u0648\u062A\u0646\u0634\u0626 \u062A\u0639\u0644\u064A\u0642\u0627\u062A \u0628\u0627\u0644\u0630\u0643\u0627\u0621 \u0627\u0644\u0627\u0635\u0637\u0646\u0627\u0639\u064A \u0648\u0635\u0648\u0631 \u0628\u0631\u0627\u0646\u062F\u060C \u0648\u062A\u0646\u0634\u0631\u0647\u0627 \u0639\u0644\u0649 \u062D\u0633\u0627\u0628\u0627\u062A\u0643 (Instagram\u060C Facebook\u060C X).',
+                    '\u0642\u062F \u062A\u062A\u063A\u064A\u0631 \u0627\u0644\u0645\u064A\u0632\u0627\u062A \u0648\u0627\u0644\u062A\u0643\u0627\u0645\u0644\u0627\u062A \u0645\u0639 \u0645\u0631\u0648\u0631 \u0627\u0644\u0648\u0642\u062A. \u0633\u0646\u064F\u0628\u0644\u063A\u0643 \u0628\u0627\u0644\u062A\u063A\u064A\u064A\u0631\u0627\u062A \u0627\u0644\u062C\u0648\u0647\u0631\u064A\u0629.',
+                ],
+            },
+            {
+                title: '\u0662. \u062A\u0633\u062C\u064A\u0644 \u0627\u0644\u062D\u0633\u0627\u0628',
+                content: [
+                    '\u064A\u062C\u0628 \u062A\u0642\u062F\u064A\u0645 \u0645\u0639\u0644\u0648\u0645\u0627\u062A \u062F\u0642\u064A\u0642\u0629 \u0648\u0643\u0627\u0645\u0644\u0629 \u0639\u0646\u062F \u0625\u0646\u0634\u0627\u0621 \u062D\u0633\u0627\u0628.',
+                    '\u0623\u0646\u062A \u0645\u0633\u0624\u0648\u0644 \u0639\u0646 \u0627\u0644\u062D\u0641\u0627\u0638 \u0639\u0644\u0649 \u0623\u0645\u0627\u0646 \u0628\u064A\u0627\u0646\u0627\u062A \u062A\u0633\u062C\u064A\u0644 \u0627\u0644\u062F\u062E\u0648\u0644.',
+                    '\u064A\u062C\u0628 \u0623\u0646 \u064A\u0643\u0648\u0646 \u0639\u0645\u0631\u0643 18 \u0639\u0627\u0645\u0627\u064B \u0639\u0644\u0649 \u0627\u0644\u0623\u0642\u0644.',
+                    '\u0644\u0627 \u064A\u062C\u0648\u0632 \u0644\u0634\u062E\u0635 \u0648\u0627\u062D\u062F \u0623\u0648 \u0643\u064A\u0627\u0646 \u0642\u0627\u0646\u0648\u0646\u064A \u0627\u0645\u062A\u0644\u0627\u0643 \u0623\u0643\u062B\u0631 \u0645\u0646 \u062D\u0633\u0627\u0628 \u0645\u062C\u0627\u0646\u064A.',
+                    '\u0623\u0646\u062A \u0645\u0633\u0624\u0648\u0644 \u0639\u0646 \u062C\u0645\u064A\u0639 \u0627\u0644\u0623\u0646\u0634\u0637\u0629 \u0627\u0644\u062A\u064A \u062A\u062A\u0645 \u0639\u0628\u0631 \u062D\u0633\u0627\u0628\u0643.',
+                ],
+            },
+            {
+                title: '\u0663. \u0627\u0644\u0627\u0633\u062A\u062E\u062F\u0627\u0645 \u0627\u0644\u0645\u0642\u0628\u0648\u0644',
+                content: [
+                    '\u064A\u062C\u0628 \u0627\u0633\u062A\u062E\u062F\u0627\u0645 ReviewPost \u0644\u0623\u063A\u0631\u0627\u0636 \u0642\u0627\u0646\u0648\u0646\u064A\u0629 \u0641\u0642\u0637 \u0648\u0648\u0641\u0642\u0627\u064B \u0644\u0647\u0630\u0647 \u0627\u0644\u0634\u0631\u0648\u0637.',
+                    '\u0644\u0627 \u064A\u062C\u0648\u0632 \u0646\u0634\u0631 \u0645\u062D\u062A\u0648\u0649 \u062A\u0634\u0647\u064A\u0631\u064A \u0623\u0648 \u0645\u0633\u064A\u0621 \u0623\u0648 \u0627\u062D\u062A\u064A\u0627\u0644\u064A \u0623\u0648 \u064A\u0646\u062A\u0647\u0643 \u062D\u0642\u0648\u0642 \u0623\u0637\u0631\u0627\u0641 \u062B\u0627\u0644\u062B\u0629.',
+                    '\u0644\u0627 \u064A\u062C\u0648\u0632 \u0645\u062D\u0627\u0648\u0644\u0629 \u0627\u0644\u0647\u0646\u062F\u0633\u0629 \u0627\u0644\u0639\u0643\u0633\u064A\u0629 \u0623\u0648 \u0641\u0643 \u062A\u062C\u0645\u064A\u0639 \u0623\u064A \u062C\u0632\u0621 \u0645\u0646 \u0627\u0644\u062E\u062F\u0645\u0629.',
+                    '\u0644\u0627 \u064A\u062C\u0648\u0632 \u0627\u0633\u062A\u062E\u062F\u0627\u0645 \u0623\u062F\u0648\u0627\u062A \u0622\u0644\u064A\u0629 \u0644\u0644\u0648\u0635\u0648\u0644 \u0644\u0644\u062E\u062F\u0645\u0629 \u062E\u0627\u0631\u062C \u0646\u0637\u0627\u0642 APIs \u0627\u0644\u0645\u062A\u0627\u062D\u0629.',
+                    '\u0644\u0627 \u064A\u062C\u0648\u0632 \u0627\u0644\u062A\u062D\u0627\u064A\u0644 \u0639\u0644\u0649 \u062D\u062F\u0648\u062F \u0627\u0644\u0627\u0633\u062A\u062E\u062F\u0627\u0645 \u0623\u0648 \u0633\u064A\u0627\u0633\u0627\u062A \u0627\u0644\u0627\u0633\u062A\u062E\u062F\u0627\u0645 \u0627\u0644\u0639\u0627\u062F\u0644.',
+                    '\u064A\u062C\u0628 \u0627\u0644\u0627\u0645\u062A\u062B\u0627\u0644 \u0644\u0634\u0631\u0648\u0637 \u062E\u062F\u0645\u0629 \u062C\u0645\u064A\u0639 \u0627\u0644\u0645\u0646\u0635\u0627\u062A \u0627\u0644\u0645\u062A\u0635\u0644\u0629 (Google\u060C Meta\u060C \u0633\u0644\u0629\u060C \u0625\u0644\u062E).',
+                    '\u0627\u0646\u062A\u0647\u0627\u0643 \u0647\u0630\u0647 \u0627\u0644\u0642\u0648\u0627\u0639\u062F \u0642\u062F \u064A\u0624\u062F\u064A \u0625\u0644\u0649 \u062A\u0639\u0644\u064A\u0642 \u0623\u0648 \u0625\u0646\u0647\u0627\u0621 \u0627\u0644\u062D\u0633\u0627\u0628 \u0641\u0648\u0631\u0627\u064B.',
+                ],
+            },
+            {
+                title: '\u0664. \u0634\u0631\u0648\u0637 \u0627\u0644\u062F\u0641\u0639',
+                content: [
+                    '\u064A\u0642\u062F\u0645 ReviewPost \u062E\u0637\u0637 \u0627\u0634\u062A\u0631\u0627\u0643 \u0645\u062F\u0641\u0648\u0639\u0629 \u0634\u0647\u0631\u064A\u0627\u064B \u0623\u0648 \u0633\u0646\u0648\u064A\u0627\u064B.',
+                    '\u062C\u0645\u064A\u0639 \u0627\u0644\u0623\u0633\u0639\u0627\u0631 \u0645\u062F\u0631\u062C\u0629 \u0628\u0627\u0644\u062F\u0648\u0644\u0627\u0631 \u0623\u0648 \u0627\u0644\u0631\u064A\u0627\u0644 \u0627\u0644\u0633\u0639\u0648\u062F\u064A \u0623\u0648 \u0627\u0644\u0644\u064A\u0631\u0629 \u0627\u0644\u062A\u0631\u0643\u064A\u0629 \u062D\u0633\u0628 \u0645\u0646\u0637\u0642\u062A\u0643.',
+                    '\u062A\u062A\u0645 \u0645\u0639\u0627\u0644\u062C\u0629 \u0627\u0644\u062F\u0641\u0639 \u0628\u0623\u0645\u0627\u0646 \u0639\u0628\u0631 Stripe (\u062F\u0648\u0644\u064A) \u0623\u0648 Moyasar (\u0645\u0646\u0637\u0642\u0629 \u0627\u0644\u062E\u0644\u064A\u062C).',
+                    '\u062A\u062A\u062C\u062F\u062F \u0627\u0644\u0627\u0634\u062A\u0631\u0627\u0643\u0627\u062A \u062A\u0644\u0642\u0627\u0626\u064A\u0627\u064B \u0645\u0627 \u0644\u0645 \u062A\u064F\u0644\u063A\u064E \u0642\u0628\u0644 \u062A\u0627\u0631\u064A\u062E \u0627\u0644\u062A\u062C\u062F\u064A\u062F.',
+                    '\u064A\u0645\u0643\u0646\u0643 \u0625\u0644\u063A\u0627\u0621 \u0627\u0634\u062A\u0631\u0627\u0643\u0643 \u0641\u064A \u0623\u064A \u0648\u0642\u062A. \u064A\u0633\u062A\u0645\u0631 \u0627\u0644\u0648\u0635\u0648\u0644 \u062D\u062A\u0649 \u0646\u0647\u0627\u064A\u0629 \u0641\u062A\u0631\u0629 \u0627\u0644\u0641\u0648\u062A\u0631\u0629 \u0627\u0644\u062D\u0627\u0644\u064A\u0629.',
+                    '\u062A\u064F\u0639\u0627\u0644\u062C \u0627\u0644\u0627\u0633\u062A\u0631\u062F\u0627\u062F\u0627\u062A \u0643\u0644 \u062D\u0627\u0644\u0629 \u0639\u0644\u0649 \u062D\u062F\u0629. \u062A\u0648\u0627\u0635\u0644 \u0645\u0639 \u0627\u0644\u062F\u0639\u0645 \u062E\u0644\u0627\u0644 7 \u0623\u064A\u0627\u0645 \u0645\u0646 \u0627\u0644\u062E\u0635\u0645.',
+                    '\u0646\u062D\u062A\u0641\u0638 \u0628\u062D\u0642 \u062A\u063A\u064A\u064A\u0631 \u0627\u0644\u0623\u0633\u0639\u0627\u0631 \u0645\u0639 \u0625\u0634\u0639\u0627\u0631 \u0645\u0633\u0628\u0642 30 \u064A\u0648\u0645\u0627\u064B \u0644\u0644\u0645\u0634\u062A\u0631\u0643\u064A\u0646 \u0627\u0644\u062D\u0627\u0644\u064A\u064A\u0646.',
+                ],
+            },
+            {
+                title: '\u0665. \u0633\u064A\u0627\u0633\u0629 \u0627\u0644\u0627\u0633\u062A\u062E\u062F\u0627\u0645 \u0627\u0644\u0639\u0627\u062F\u0644',
+                content: [
+                    '\u0643\u0644 \u062E\u0637\u0629 \u0627\u0634\u062A\u0631\u0627\u0643 \u062A\u062A\u0636\u0645\u0646 \u062D\u062F\u0627\u064B \u0634\u0647\u0631\u064A\u0627\u064B \u0644\u0644\u0645\u0646\u0634\u0648\u0631\u0627\u062A (30 \u0623\u0648 150 \u0623\u0648 500 \u0634\u0647\u0631\u064A\u0627\u064B).',
+                    '\u0646\u0634\u0631 \u0645\u0646\u0634\u0648\u0631 \u0648\u0627\u062D\u062F \u0639\u0644\u0649 \u0645\u0646\u0635\u0627\u062A \u0645\u062A\u0639\u062F\u062F\u0629 \u064A\u064F\u062D\u0633\u0628 \u0643\u0645\u0646\u0634\u0648\u0631 \u0648\u0627\u062D\u062F.',
+                    '\u0627\u0644\u0631\u0635\u064A\u062F \u063A\u064A\u0631 \u0627\u0644\u0645\u064F\u0633\u062A\u062E\u062F\u0645 \u0644\u0627 \u064A\u064F\u0646\u0642\u0644 \u0644\u0644\u0634\u0647\u0631 \u0627\u0644\u062A\u0627\u0644\u064A.',
+                    '\u0627\u0644\u0645\u0633\u062A\u062E\u062F\u0645\u0648\u0646 \u0627\u0644\u0630\u064A\u0646 \u064A\u0633\u062A\u0647\u0644\u0643\u0648\u0646 \u0623\u0643\u062B\u0631 \u0645\u0646 3 \u0623\u0636\u0639\u0627\u0641 \u0627\u0644\u0645\u062A\u0648\u0633\u0637 \u0642\u062F \u064A\u064F\u062A\u0648\u0627\u0635\u0644 \u0645\u0639\u0647\u0645 \u0644\u0645\u0646\u0627\u0642\u0634\u0629 \u0627\u0644\u062A\u0631\u0642\u064A\u0629.',
+                ],
+            },
+            {
+                title: '\u0666. \u0627\u0644\u0645\u0644\u0643\u064A\u0629 \u0627\u0644\u0641\u0643\u0631\u064A\u0629',
+                content: [
+                    '\u062A\u062D\u062A\u0641\u0638 \u0628\u0645\u0644\u0643\u064A\u0629 \u062C\u0645\u064A\u0639 \u0627\u0644\u0645\u062D\u062A\u0648\u0649 \u0627\u0644\u0630\u064A \u062A\u0642\u062F\u0645\u0647 \u0644\u0644\u062E\u062F\u0645\u0629 (\u062A\u0642\u064A\u064A\u0645\u0627\u062A\u060C \u0634\u0639\u0627\u0631\u0627\u062A\u060C \u0623\u0635\u0648\u0644 \u0627\u0644\u0639\u0644\u0627\u0645\u0629).',
+                    '\u062A\u062D\u062A\u0641\u0638 \u0628\u0645\u0644\u0643\u064A\u0629 \u0627\u0644\u0645\u062D\u062A\u0648\u0649 \u0627\u0644\u0645\u064F\u0646\u0634\u0623 \u0628\u0648\u0627\u0633\u0637\u0629 \u0627\u0644\u062E\u062F\u0645\u0629 (\u062A\u0639\u0644\u064A\u0642\u0627\u062A\u060C \u0635\u0648\u0631\u060C \u0645\u0646\u0634\u0648\u0631\u0627\u062A).',
+                    '\u0645\u0646\u0635\u0629 ReviewPost \u0645\u0644\u0643\u064A\u0629 \u0641\u0643\u0631\u064A\u0629 \u0644\u0640 PrimeFlow Solutions.',
+                    '\u062A\u0645\u0646\u062D\u0646\u0627 \u062A\u0631\u062E\u064A\u0635\u0627\u064B \u0645\u062D\u062F\u0648\u062F\u0627\u064B \u0644\u0627\u0633\u062A\u062E\u062F\u0627\u0645 \u0645\u062D\u062A\u0648\u0627\u0643 \u0641\u0642\u0637 \u0644\u062A\u0642\u062F\u064A\u0645 \u0627\u0644\u062E\u062F\u0645\u0629.',
+                    '\u0627\u0644\u062A\u0639\u0644\u064A\u0642\u0627\u062A \u0627\u0644\u0645\u064F\u0646\u0634\u0623\u0629 \u0628\u0627\u0644\u0630\u0643\u0627\u0621 \u0627\u0644\u0627\u0635\u0637\u0646\u0627\u0639\u064A \u0645\u0644\u0643\u064A\u062A\u0643 \u0648\u0641\u0642\u0627\u064B \u0644\u0634\u0631\u0648\u0637 OpenAI.',
+                ],
+            },
+            {
+                title: '\u0667. \u0627\u0644\u0628\u064A\u0627\u0646\u0627\u062A \u0648\u0627\u0644\u062E\u0635\u0648\u0635\u064A\u0629',
+                content: [
+                    '\u0627\u0633\u062A\u062E\u062F\u0627\u0645\u0643 \u0644\u0644\u062E\u062F\u0645\u0629 \u064A\u062E\u0636\u0639 \u0623\u064A\u0636\u0627\u064B \u0644\u0633\u064A\u0627\u0633\u0629 \u0627\u0644\u062E\u0635\u0648\u0635\u064A\u0629 \u0627\u0644\u0645\u062A\u0627\u062D\u0629 \u0639\u0628\u0631 reviewpost.app/privacy.',
+                    '\u0646\u0639\u0627\u0644\u062C \u0628\u064A\u0627\u0646\u0627\u062A\u0643 \u0648\u0641\u0642\u0627\u064B \u0644\u0644\u0627\u0626\u062D\u0629 GDPR \u0648\u0646\u0638\u0627\u0645 \u062D\u0645\u0627\u064A\u0629 \u0627\u0644\u0628\u064A\u0627\u0646\u0627\u062A \u0627\u0644\u0634\u062E\u0635\u064A\u0629 \u0627\u0644\u0633\u0639\u0648\u062F\u064A.',
+                    '\u0644\u0627 \u0646\u0628\u064A\u0639 \u0628\u064A\u0627\u0646\u0627\u062A\u0643 \u0644\u0623\u0637\u0631\u0627\u0641 \u062E\u0627\u0631\u062C\u064A\u0629.',
+                ],
+            },
+            {
+                title: '\u0668. \u0627\u0644\u062A\u0643\u0627\u0645\u0644\u0627\u062A \u0627\u0644\u062E\u0627\u0631\u062C\u064A\u0629',
+                content: [
+                    '\u064A\u062A\u0643\u0627\u0645\u0644 ReviewPost \u0645\u0639 \u062E\u062F\u0645\u0627\u062A \u062E\u0627\u0631\u062C\u064A\u0629 \u062A\u0634\u0645\u0644 Google\u060C Meta\u060C \u0633\u0644\u0629\u060C Shopify\u060C OpenAI\u060C Stripe\u060C \u0648Moyasar.',
+                    '\u0627\u0633\u062A\u062E\u062F\u0627\u0645\u0643 \u0644\u0647\u0630\u0647 \u0627\u0644\u062A\u0643\u0627\u0645\u0644\u0627\u062A \u064A\u062E\u0636\u0639 \u0644\u0634\u0631\u0648\u0637 \u0627\u0644\u062E\u062F\u0645\u0629 \u0627\u0644\u062E\u0627\u0635\u0629 \u0628\u0643\u0644 \u0637\u0631\u0641 \u062E\u0627\u0631\u062C\u064A.',
+                    '\u0644\u0633\u0646\u0627 \u0645\u0633\u0624\u0648\u0644\u064A\u0646 \u0639\u0646 \u062A\u0648\u0641\u0631 \u0623\u0648 \u0633\u064A\u0627\u0633\u0627\u062A \u0627\u0644\u062E\u062F\u0645\u0627\u062A \u0627\u0644\u062E\u0627\u0631\u062C\u064A\u0629.',
+                    '\u0625\u0630\u0627 \u063A\u064A\u0651\u0631\u062A \u062E\u062F\u0645\u0629 \u062E\u0627\u0631\u062C\u064A\u0629 \u0648\u0627\u062C\u0647\u062A\u0647\u0627\u060C \u0642\u062F \u0646\u062D\u062A\u0627\u062C \u0644\u062A\u0639\u062F\u064A\u0644 \u0623\u0648 \u0625\u064A\u0642\u0627\u0641 \u0627\u0644\u0645\u064A\u0632\u0627\u062A \u0630\u0627\u062A \u0627\u0644\u0635\u0644\u0629.',
+                ],
+            },
+            {
+                title: '\u0669. \u062A\u0648\u0641\u0631 \u0627\u0644\u062E\u062F\u0645\u0629',
+                content: [
+                    '\u0646\u0633\u0639\u0649 \u0644\u062A\u0648\u0641\u0631 \u0639\u0627\u0644\u064D \u0644\u0643\u0646 \u0644\u0627 \u0646\u0636\u0645\u0646 \u0648\u0642\u062A \u062A\u0634\u063A\u064A\u0644 100%.',
+                    '\u0642\u062F \u0646\u062C\u0631\u064A \u0635\u064A\u0627\u0646\u0629 \u0645\u062C\u062F\u0648\u0644\u0629 \u0645\u0639 \u0625\u0634\u0639\u0627\u0631 \u0645\u0633\u0628\u0642 \u0645\u0639\u0642\u0648\u0644.',
+                    '\u0644\u0633\u0646\u0627 \u0645\u0633\u0624\u0648\u0644\u064A\u0646 \u0639\u0646 \u0627\u0646\u0642\u0637\u0627\u0639\u0627\u062A \u0646\u0627\u062A\u062C\u0629 \u0639\u0646 \u0639\u0648\u0627\u0645\u0644 \u062E\u0627\u0631\u062C\u0629 \u0639\u0646 \u0633\u064A\u0637\u0631\u062A\u0646\u0627.',
+                ],
+            },
+            {
+                title: '\u0661\u0660. \u062A\u062D\u062F\u064A\u062F \u0627\u0644\u0645\u0633\u0624\u0648\u0644\u064A\u0629',
+                content: [
+                    '\u0625\u0644\u0649 \u0623\u0642\u0635\u0649 \u062D\u062F \u064A\u0633\u0645\u062D \u0628\u0647 \u0627\u0644\u0642\u0627\u0646\u0648\u0646\u060C \u0644\u0627 \u062A\u062A\u062D\u0645\u0644 PrimeFlow Solutions \u0645\u0633\u0624\u0648\u0644\u064A\u0629 \u0623\u064A \u0623\u0636\u0631\u0627\u0631 \u063A\u064A\u0631 \u0645\u0628\u0627\u0634\u0631\u0629 \u0623\u0648 \u0639\u0631\u0636\u064A\u0629 \u0623\u0648 \u062A\u0628\u0639\u064A\u0629.',
+                    '\u0625\u062C\u0645\u0627\u0644\u064A \u0645\u0633\u0624\u0648\u0644\u064A\u062A\u0646\u0627 \u0644\u0646 \u064A\u062A\u062C\u0627\u0648\u0632 \u0627\u0644\u0645\u0628\u0644\u063A \u0627\u0644\u0630\u064A \u062F\u0641\u0639\u062A\u0647 \u0644\u0646\u0627 \u062E\u0644\u0627\u0644 \u0627\u0644\u0640 12 \u0634\u0647\u0631\u0627\u064B \u0627\u0644\u0633\u0627\u0628\u0642\u0629.',
+                    '\u0644\u0633\u0646\u0627 \u0645\u0633\u0624\u0648\u0644\u064A\u0646 \u0639\u0646 \u0623\u064A \u062E\u0633\u0627\u0631\u0629 \u0646\u0627\u062A\u062C\u0629 \u0639\u0646 \u0627\u0644\u0645\u062D\u062A\u0648\u0649 \u0627\u0644\u0645\u0646\u0634\u0648\u0631 \u0623\u0648 \u0645\u062D\u062A\u0648\u0649 \u0627\u0644\u0630\u0643\u0627\u0621 \u0627\u0644\u0627\u0635\u0637\u0646\u0627\u0639\u064A.',
+                    '\u0623\u0646\u062A \u0645\u0633\u0624\u0648\u0644 \u0639\u0646 \u0645\u0631\u0627\u062C\u0639\u0629 \u0627\u0644\u0645\u062D\u062A\u0648\u0649 \u0642\u0628\u0644 \u0627\u0644\u0646\u0634\u0631 \u0625\u0630\u0627 \u0643\u0627\u0646\u062A \u0627\u0644\u062F\u0642\u0629 \u0645\u0647\u0645\u0629.',
+                ],
+            },
+            {
+                title: '\u0661\u0661. \u0625\u0646\u0647\u0627\u0621 \u0627\u0644\u062E\u062F\u0645\u0629',
+                content: [
+                    '\u064A\u0645\u0643\u0646\u0643 \u0625\u0646\u0647\u0627\u0621 \u062D\u0633\u0627\u0628\u0643 \u0641\u064A \u0623\u064A \u0648\u0642\u062A.',
+                    '\u0642\u062F \u0646\u0639\u0644\u0651\u0642 \u0623\u0648 \u0646\u0646\u0647\u064A \u062D\u0633\u0627\u0628\u0643 \u0625\u0630\u0627 \u0627\u0646\u062A\u0647\u0643\u062A \u0647\u0630\u0647 \u0627\u0644\u0634\u0631\u0648\u0637.',
+                    '\u0639\u0646\u062F \u0627\u0644\u0625\u0646\u0647\u0627\u0621\u060C \u062A\u064F\u062D\u0630\u0641 \u0628\u064A\u0627\u0646\u0627\u062A\u0643 \u0646\u0647\u0627\u0626\u064A\u0627\u064B \u062E\u0644\u0627\u0644 30 \u064A\u0648\u0645\u0627\u064B.',
+                    '\u0627\u0644\u0623\u0642\u0633\u0627\u0645 \u0627\u0644\u062A\u064A \u0628\u0637\u0628\u064A\u0639\u062A\u0647\u0627 \u062A\u0628\u0642\u0649 \u0633\u0627\u0631\u064A\u0629 \u0628\u0639\u062F \u0627\u0644\u0625\u0646\u0647\u0627\u0621 \u0633\u062A\u0638\u0644 \u0633\u0627\u0631\u064A\u0629.',
+                ],
+            },
+            {
+                title: '\u0661\u0662. \u0627\u0644\u0642\u0627\u0646\u0648\u0646 \u0627\u0644\u0645\u064F\u0637\u0628\u0651\u0642',
+                content: [
+                    '\u062A\u062E\u0636\u0639 \u0647\u0630\u0647 \u0627\u0644\u0634\u0631\u0648\u0637 \u0644\u0642\u0648\u0627\u0646\u064A\u0646 \u0627\u0644\u0645\u0645\u0644\u0643\u0629 \u0627\u0644\u0639\u0631\u0628\u064A\u0629 \u0627\u0644\u0633\u0639\u0648\u062F\u064A\u0629.',
+                    '\u062A\u064F\u062D\u0644 \u0627\u0644\u0646\u0632\u0627\u0639\u0627\u062A \u0639\u0628\u0631 \u0627\u0644\u0645\u062D\u0627\u0643\u0645 \u0627\u0644\u0645\u062E\u062A\u0635\u0629 \u0641\u064A \u0627\u0644\u0631\u064A\u0627\u0636\u060C \u0627\u0644\u0645\u0645\u0644\u0643\u0629 \u0627\u0644\u0639\u0631\u0628\u064A\u0629 \u0627\u0644\u0633\u0639\u0648\u062F\u064A\u0629.',
+                    '\u0644\u0645\u0633\u062A\u062E\u062F\u0645\u064A \u0627\u0644\u0627\u062A\u062D\u0627\u062F \u0627\u0644\u0623\u0648\u0631\u0648\u0628\u064A\u060C \u0644\u0627 \u062A\u0624\u062B\u0631 \u0647\u0630\u0647 \u0627\u0644\u0634\u0631\u0648\u0637 \u0639\u0644\u0649 \u062D\u0642\u0648\u0642\u0643 \u0628\u0645\u0648\u062C\u0628 \u0642\u0648\u0627\u0646\u064A\u0646 \u062D\u0645\u0627\u064A\u0629 \u0627\u0644\u0645\u0633\u062A\u0647\u0644\u0643.',
+                ],
+            },
+            {
+                title: '\u0661\u0663. \u062A\u063A\u064A\u064A\u0631\u0627\u062A \u0639\u0644\u0649 \u0647\u0630\u0647 \u0627\u0644\u0634\u0631\u0648\u0637',
+                content: [
+                    '\u0642\u062F \u0646\u062D\u062F\u0651\u062B \u0647\u0630\u0647 \u0627\u0644\u0634\u0631\u0648\u0637 \u0645\u0646 \u0648\u0642\u062A \u0644\u0622\u062E\u0631 \u0645\u0639 \u0625\u0634\u0639\u0627\u0631 30 \u064A\u0648\u0645\u0627\u064B \u0642\u0628\u0644 \u0627\u0644\u0633\u0631\u064A\u0627\u0646.',
+                    '\u0627\u0633\u062A\u0645\u0631\u0627\u0631 \u0627\u0644\u0627\u0633\u062A\u062E\u062F\u0627\u0645 \u0628\u0639\u062F \u0633\u0631\u064A\u0627\u0646 \u0627\u0644\u062A\u063A\u064A\u064A\u0631\u0627\u062A \u064A\u0639\u0646\u064A \u0627\u0644\u0645\u0648\u0627\u0641\u0642\u0629.',
+                    '\u0625\u0646 \u0644\u0645 \u062A\u0648\u0627\u0641\u0642\u060C \u064A\u062C\u0628 \u0627\u0644\u062A\u0648\u0642\u0641 \u0639\u0646 \u0627\u0644\u0627\u0633\u062A\u062E\u062F\u0627\u0645 \u0648\u0625\u0644\u063A\u0627\u0621 \u062D\u0633\u0627\u0628\u0643.',
+                ],
+            },
+        ],
+        contact: {
+            title: '\u0661\u0664. \u062A\u0648\u0627\u0635\u0644 \u0645\u0639\u0646\u0627',
+            text: '\u0625\u0630\u0627 \u0643\u0627\u0646 \u0644\u062F\u064A\u0643 \u0623\u0633\u0626\u0644\u0629 \u062D\u0648\u0644 \u0634\u0631\u0648\u0637 \u0627\u0644\u062E\u062F\u0645\u0629\u060C \u062A\u0648\u0627\u0635\u0644 \u0645\u0639\u0646\u0627 \u0639\u0628\u0631:',
+        },
+    },
+    TR: {
+        title: 'Hizmet \u015Eartlar\u0131',
+        lastUpdated: `Son g\u00FCncelleme: ${LAST_UPDATED}`,
+        intro: 'Bu Hizmet \u015Eartlar\u0131 ("\u015Eartlar"), PrimeFlow Solutions taraf\u0131ndan i\u015Fletilen ReviewPost\'a eri\u015Fiminizi ve kullan\u0131m\u0131n\u0131z\u0131 d\u00FCzenler. reviewpost.app platformumuzu kullanarak bu \u015Eartlara ba\u011Fl\u0131 olmay\u0131 kabul edersiniz. Kabul etmiyorsan\u0131z hizmeti kullanmay\u0131n.',
+        sections: [
+            {
+                title: '1. Hizmet Tan\u0131m\u0131',
+                content: [
+                    'ReviewPost, m\u00FC\u015Fteri yorumlar\u0131n\u0131 otomatik olarak markal\u0131 sosyal medya i\u00E7eri\u011Fine d\u00F6n\u00FC\u015Ft\u00FCren bir SaaS platformudur.',
+                    'Hizmet, ba\u011Fl\u0131 platformlardan (Google Business, Salla, Shopify) yorumlar\u0131 \u00E7eker, yapay zeka destekli ba\u015Fl\u0131klar ve markal\u0131 g\u00F6rseller olu\u015Fturur ve sosyal medya hesaplar\u0131n\u0131za yay\u0131nlar.',
+                    '\u00D6zellikler ve desteklenen platformlar zamanla de\u011Fi\u015Febilir. \u00D6nemli de\u011Fi\u015Fikliklerden haberdar edileceksiniz.',
+                ],
+            },
+            {
+                title: '2. Hesap Kay\u0131t',
+                content: [
+                    'Hesap olu\u015Ftururken do\u011Fru ve eksiksiz bilgi sa\u011Flamal\u0131s\u0131n\u0131z.',
+                    'Hesap kimlik bilgilerinizin g\u00FCvenli\u011Finden siz sorumlusunuz.',
+                    'Bu hizmeti kullanmak i\u00E7in en az 18 ya\u015F\u0131nda olmal\u0131s\u0131n\u0131z.',
+                    'Bir ki\u015Fi veya t\u00FCzel ki\u015Fi birden fazla \u00FCcretsiz hesap a\u00E7amaz.',
+                    'Hesab\u0131n\u0131z alt\u0131nda ger\u00E7ekle\u015Fen t\u00FCm faaliyetlerden siz sorumlusunuz.',
+                ],
+            },
+            {
+                title: '3. Kabul Edilebilir Kullan\u0131m',
+                content: [
+                    'ReviewPost\u2019u yaln\u0131zca yasal ama\u00E7larla ve bu \u015Eartlara uygun olarak kullanabilirsiniz.',
+                    'Karalama, m\u00FCstehcen, doland\u0131r\u0131c\u0131l\u0131k veya \u00FC\u00E7\u00FCnc\u00FC taraf haklar\u0131n\u0131 ihlal eden i\u00E7erik yay\u0131nlayamazs\u0131n\u0131z.',
+                    'Hizmetin herhangi bir b\u00F6l\u00FCm\u00FCn\u00FC tersine m\u00FChendislik veya ayr\u0131\u015Ft\u0131rma giri\u015Fiminde bulunamazs\u0131n\u0131z.',
+                    'Sa\u011Flanan API\u2019lar d\u0131\u015F\u0131nda otomatik ara\u00E7lar kullanamazs\u0131n\u0131z.',
+                    'Kullan\u0131m limitlerini veya adil kullan\u0131m politikalar\u0131n\u0131 atlatmaya \u00E7al\u0131\u015Famazs\u0131n\u0131z.',
+                    'T\u00FCm ba\u011Fl\u0131 platformlar\u0131n hizmet \u015Fartlar\u0131na uymal\u0131s\u0131n\u0131z.',
+                    '\u0130hlaller an\u0131nda hesap ask\u0131ya alma veya sonland\u0131rma ile sonu\u00E7lanabilir.',
+                ],
+            },
+            {
+                title: '4. \u00D6deme Ko\u015Fullar\u0131',
+                content: [
+                    'ReviewPost ayl\u0131k veya y\u0131ll\u0131k faturaland\u0131r\u0131lan \u00FCcretli abonelik planlar\u0131 sunar.',
+                    'T\u00FCm fiyatlar b\u00F6lgenize g\u00F6re USD, SAR veya TRY cinsinden listelenir.',
+                    '\u00D6demeler Stripe (uluslararas\u0131) veya Moyasar (K\u00F6rfez b\u00F6lgesi) taraf\u0131ndan g\u00FCvenli bir \u015Fekilde i\u015Flenir.',
+                    'Abonelikler, yenileme tarihinden \u00F6nce iptal edilmedik\u00E7e otomatik olarak yenilenir.',
+                    'Aboneli\u011Finizi istedi\u011Finiz zaman iptal edebilirsiniz. Mevcut fatura d\u00F6neminin sonuna kadar eri\u015Fime devam edersiniz.',
+                    '\u0130adeler vaka baz\u0131nda de\u011Ferlendirilir. \u0130ade talepleri i\u00E7in \u00FCcretten sonraki 7 g\u00FCn i\u00E7inde destekle ileti\u015Fime ge\u00E7in.',
+                    'Mevcut abonelere 30 g\u00FCn \u00F6nceden bildirimle fiyatlar\u0131 de\u011Fi\u015Ftirme hakk\u0131m\u0131z\u0131 sakl\u0131 tutar\u0131z.',
+                ],
+            },
+            {
+                title: '5. Adil Kullan\u0131m Politikas\u0131',
+                content: [
+                    'Her abonelik plan\u0131 ayl\u0131k g\u00F6nderi limiti i\u00E7erir (30, 150 veya 500).',
+                    'Bir g\u00F6nderiyi birden fazla platforma yay\u0131nlamak tek g\u00F6nderi olarak say\u0131l\u0131r.',
+                    'Kullan\u0131lmayan ayl\u0131k haklar bir sonraki aya devretmez.',
+                    'Plan ortalamas\u0131n\u0131n 3 kat\u0131ndan fazla t\u00FCketen kullan\u0131c\u0131larla y\u00FCkseltme hakk\u0131nda ileti\u015Fime ge\u00E7ilebilir.',
+                ],
+            },
+            {
+                title: '6. Fikri M\u00FClkiyet',
+                content: [
+                    'Hizmete sa\u011Flad\u0131\u011F\u0131n\u0131z t\u00FCm i\u00E7eri\u011Fin (yorumlar, logolar, marka varl\u0131klar\u0131) m\u00FClkiyetini siz korursunuz.',
+                    'Hizmet taraf\u0131ndan sizin ad\u0131n\u0131za olu\u015Fturulan t\u00FCm i\u00E7eri\u011Fin (ba\u015Fl\u0131klar, g\u00F6rseller, g\u00F6nderiler) m\u00FClkiyetini siz korursunuz.',
+                    'ReviewPost platformu PrimeFlow Solutions\u2019\u0131n fikri m\u00FClkiyetidir.',
+                    'Hizmeti sunmak amac\u0131yla i\u00E7eri\u011Finizi kullanmam\u0131z i\u00E7in bize s\u0131n\u0131rl\u0131 bir lisans verirsiniz.',
+                    'Yapay zeka taraf\u0131ndan olu\u015Fturulan ba\u015Fl\u0131klar, OpenAI\u2019\u0131n \u015Fartlar\u0131na g\u00F6re size aittir.',
+                ],
+            },
+            {
+                title: '7. Veri ve Gizlilik',
+                content: [
+                    'Hizmeti kullan\u0131m\u0131n\u0131z ayr\u0131ca reviewpost.app/privacy adresindeki Gizlilik Politikam\u0131za tabidir.',
+                    'Verilerinizi GDPR ve ilgili yerel yasalara uygun olarak i\u015Fleriz.',
+                    'Verilerinizi \u00FC\u00E7\u00FCnc\u00FC taraflara satmay\u0131z.',
+                ],
+            },
+            {
+                title: '8. \u00DC\u00E7\u00FCnc\u00FC Taraf Entegrasyonlar\u0131',
+                content: [
+                    'ReviewPost; Google, Meta, Salla, Shopify, OpenAI, Stripe ve Moyasar dahil \u00FC\u00E7\u00FCnc\u00FC taraf hizmetlerle entegre olur.',
+                    'Bu entegrasyonlar\u0131 kullan\u0131m\u0131n\u0131z ilgili \u00FC\u00E7\u00FCnc\u00FC taraf hizmet \u015Fartlar\u0131na tabidir.',
+                    '\u00DC\u00E7\u00FCnc\u00FC taraf hizmetlerin kullan\u0131labilirli\u011Fi veya politikalar\u0131ndan sorumlu de\u011Filiz.',
+                    'Bir \u00FC\u00E7\u00FCnc\u00FC taraf hizmeti API\u2019sini de\u011Fi\u015Ftirirse, ilgili \u00F6zellikleri de\u011Fi\u015Ftirmemiz veya durdurmam\u0131z gerekebilir.',
+                ],
+            },
+            {
+                title: '9. Hizmet Kullan\u0131labilirli\u011Fi',
+                content: [
+                    'Y\u00FCksek kullan\u0131labilirlik i\u00E7in \u00E7abal\u0131yoruz ancak %100 \u00E7al\u0131\u015Fma s\u00FCresi garanti etmiyoruz.',
+                    'Makul \u00F6nceden bildirimle planl\u0131 bak\u0131m yapabiliriz.',
+                    'Kontrol\u00FCm\u00FCz d\u0131\u015F\u0131ndaki fakt\u00F6rlerden kaynaklanan hizmet kesintilerinden sorumlu de\u011Filiz.',
+                ],
+            },
+            {
+                title: '10. Sorumluluk S\u0131n\u0131rlamas\u0131',
+                content: [
+                    'Yasalar\u0131n izin verdi\u011Fi azami \u00F6l\u00E7\u00FCde, PrimeFlow Solutions dolayl\u0131, ar\u0131zi, \u00F6zel veya cezai zararlardan sorumlu olmayacakt\u0131r.',
+                    'Toplam sorumlulu\u011Fumuz, talebin \u00F6ncesindeki 12 ayda bize \u00F6dedi\u011Finiz tutar\u0131 a\u015Fmayacakt\u0131r.',
+                    'Yay\u0131nlanan i\u00E7erik, \u00FC\u00E7\u00FCnc\u00FC taraf hizmet ar\u0131zalar\u0131 veya yapay zeka taraf\u0131ndan olu\u015Fturulan i\u00E7erikten kaynaklanan kay\u0131plardan sorumlu de\u011Filiz.',
+                    'Do\u011Fruluk i\u015Finiz i\u00E7in kritikse, yay\u0131ndan \u00F6nce i\u00E7eri\u011Fi incelemekten siz sorumlusunuz.',
+                ],
+            },
+            {
+                title: '11. Fesih',
+                content: [
+                    'Hesab\u0131n\u0131z\u0131 istedi\u011Finiz zaman sonland\u0131rabilirsiniz.',
+                    'Bu \u015Eartlar\u0131 ihlal ederseniz hesab\u0131n\u0131z\u0131 ask\u0131ya alabilir veya sonland\u0131rabiliriz.',
+                    'Fesih \u00FCzerine verileriniz 30 g\u00FCn i\u00E7inde kal\u0131c\u0131 olarak silinecektir.',
+                    'Do\u011Falar\u0131 gere\u011Fi fesihten sonra ge\u00E7erli olmas\u0131 gereken b\u00F6l\u00FCmler ge\u00E7erli olmaya devam edecektir.',
+                ],
+            },
+            {
+                title: '12. Uygulanacak Hukuk',
+                content: [
+                    'Bu \u015Eartlar, Suudi Arabistan Krall\u0131\u011F\u0131 yasalar\u0131na g\u00F6re y\u00F6netilir.',
+                    'Uyu\u015Fmazl\u0131klar Riyad, Suudi Arabistan\'daki yetkili mahkemelerde \u00E7\u00F6z\u00FClecektir.',
+                    'Avrupa Birli\u011Fi\'ndeki kullan\u0131c\u0131lar i\u00E7in, bu \u015Eartlar zorunlu t\u00FCketici koruma yasalar\u0131 kapsam\u0131ndaki haklar\u0131n\u0131z\u0131 etkilemez.',
+                ],
+            },
+            {
+                title: '13. Bu \u015Eartlardaki De\u011Fi\u015Fiklikler',
+                content: [
+                    'Bu \u015Eartlar\u0131 zaman zaman g\u00FCncelleyebiliriz. \u00D6nemli de\u011Fi\u015Fiklikler y\u00FCr\u00FCrl\u00FC\u011Fe girmeden en az 30 g\u00FCn \u00F6nce bilgilendirileceksiniz.',
+                    'De\u011Fi\u015Fiklikler y\u00FCr\u00FCrl\u00FC\u011Fe girdikten sonra hizmeti kullanmaya devam etmeniz g\u00FCncellenen \u015Eartlar\u0131 kabul etti\u011Finiz anlam\u0131na gelir.',
+                    'G\u00FCncellenen \u015Eartlar\u0131 kabul etmiyorsan\u0131z hizmeti kullanmay\u0131 b\u0131rakmal\u0131 ve hesab\u0131n\u0131z\u0131 iptal etmelisiniz.',
+                ],
+            },
+        ],
+        contact: {
+            title: '14. \u0130leti\u015Fim',
+            text: 'Bu Hizmet \u015Eartlar\u0131 hakk\u0131nda sorular\u0131n\u0131z varsa bize ula\u015F\u0131n:',
+        },
+    },
+};
+
+function LangSwitcher({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }) {
+    const [open, setOpen] = useState(false);
+    return (
+        <div className="relative">
+            <button onClick={() => setOpen((v) => !v)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors border border-gray-200">
+                <span>{LANGS.find((l) => l.code === lang)?.flag}</span>
+                <span>{lang}</span>
+                <svg className={`w-3.5 h-3.5 transition-transform ${open ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+            </button>
+            {open && (
+                <div className="absolute top-full mt-1 right-0 bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden z-50 min-w-[100px]">
+                    {LANGS.map((l) => (
+                        <button key={l.code} onClick={() => { setLang(l.code); setOpen(false); }} className={`w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-50 transition-colors ${lang === l.code ? 'font-semibold text-indigo-600' : 'text-gray-700'}`}>
+                            <span>{l.flag}</span>
+                            <span>{l.label}</span>
+                        </button>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
+export default function TermsOfServicePage() {
+    const [lang, setLang] = useState<Lang>('EN');
+    const isRtl = lang === 'AR';
+
+    useEffect(() => {
+        try {
+            const saved = localStorage.getItem('reviewpost-lang') as Lang | null;
+            if (saved && CONTENT[saved]) setLang(saved);
+        } catch { /* ignore */ }
+    }, []);
+
+    const handleLangChange = (l: Lang) => {
+        setLang(l);
+        try { localStorage.setItem('reviewpost-lang', l); } catch { /* ignore */ }
+    };
+
+    const c = CONTENT[lang];
+
+    return (
+        <div dir={isRtl ? 'rtl' : 'ltr'} className="min-h-screen bg-white">
+            <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-100">
+                <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
+                    <Link href="/" className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-md shadow-indigo-200">
+                            <span className="text-white text-sm font-bold">R</span>
+                        </div>
+                        <span className="font-bold text-gray-900 text-lg tracking-tight">ReviewPost</span>
+                    </Link>
+                    <LangSwitcher lang={lang} setLang={handleLangChange} />
+                </div>
+            </header>
+
+            <main className="max-w-4xl mx-auto px-4 sm:px-6 py-12 sm:py-16">
+                <div className="mb-10">
+                    <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight mb-3">{c.title}</h1>
+                    <p className="text-sm text-gray-400">{c.lastUpdated}</p>
+                </div>
+
+                <p className="text-gray-600 leading-relaxed mb-10 text-lg border-l-4 border-indigo-200 pl-4 rtl:border-l-0 rtl:border-r-4 rtl:pl-0 rtl:pr-4">
+                    {c.intro}
+                </p>
+
+                <div className="space-y-10">
+                    {c.sections.map((section) => (
+                        <section key={section.title}>
+                            <h2 className="text-xl font-bold text-gray-900 mb-4">{section.title}</h2>
+                            <ul className="space-y-2.5">
+                                {section.content.map((item, i) => (
+                                    <li key={i} className="flex items-start gap-3 text-gray-600 leading-relaxed">
+                                        <span className="text-indigo-400 mt-1.5 flex-shrink-0">&#x2022;</span>
+                                        <span>{item}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </section>
+                    ))}
+
+                    <section>
+                        <h2 className="text-xl font-bold text-gray-900 mb-4">{c.contact.title}</h2>
+                        <p className="text-gray-600 leading-relaxed mb-4">{c.contact.text}</p>
+                        <div className="bg-gray-50 rounded-2xl border border-gray-100 p-6 space-y-2">
+                            <p className="text-gray-800 font-semibold">PrimeFlow Solutions</p>
+                            <p className="text-gray-600">
+                                Email: <a href="mailto:mfarrag@primeflow.co" className="text-indigo-600 hover:underline">mfarrag@primeflow.co</a>
+                            </p>
+                            <p className="text-gray-600">
+                                Website: <a href="https://reviewpost.app" className="text-indigo-600 hover:underline">reviewpost.app</a>
+                            </p>
+                        </div>
+                    </section>
+                </div>
+            </main>
+
+            <footer className="border-t border-gray-100 py-8">
+                <div className="max-w-4xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-gray-400">
+                    <span>&copy; 2025 ReviewPost. All rights reserved.</span>
+                    <div className="flex gap-6">
+                        <Link href="/privacy" className="hover:text-gray-600 transition-colors">{lang === 'AR' ? '\u0633\u064A\u0627\u0633\u0629 \u0627\u0644\u062E\u0635\u0648\u0635\u064A\u0629' : lang === 'TR' ? 'Gizlilik' : 'Privacy'}</Link>
+                        <Link href="/terms" className="text-indigo-600 font-medium">{lang === 'AR' ? '\u0634\u0631\u0648\u0637 \u0627\u0644\u062E\u062F\u0645\u0629' : lang === 'TR' ? 'Kullan\u0131m \u015Eartlar\u0131' : 'Terms'}</Link>
+                    </div>
+                </div>
+            </footer>
+        </div>
+    );
+}
