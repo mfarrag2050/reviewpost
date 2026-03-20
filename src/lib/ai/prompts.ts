@@ -1,5 +1,5 @@
 import { Language, PostPlatform } from '../../generated/prisma';
-import { BusinessContext, CaptionOptions } from './types';
+import { BusinessContext, CaptionOptions, ArabicCaptionOptions, ArabicTone, SallaReviewContext } from './types';
 
 // ─── System prompts per language ─────────────────────────────
 
@@ -185,5 +185,126 @@ export function buildUserPrompt(args: PromptTemplateArgs): string {
             return buildTwitterPrompt(args);
         default:
             return buildInstagramPrompt(args);
+    }
+}
+
+// ─── Salla Arabic Caption Prompts ───────────────────────────────
+
+const SALLA_SYSTEM_PROMPTS: Record<ArabicTone, string> = {
+    FORMAL: `أنت خبير تسويق رقمي متخصص في كتابة محتوى عربي احترافي لمتاجر إلكترونية على منصة سلة.
+مهمتك: تحويل تقييمات العملاء إلى منشورات سوشيال ميديا جذابة تزيد المبيعات.
+اكتب بالعربية الفصحى المعاصرة (فصيح لكن ليس أكاديمي).
+أسلوبك: احترافي، مقنع، يعزز الثقة بالمتجر والمنتج.
+لا تترجم أسماء المنتجات الإنجليزية — استخدمها كما هي مع السياق العربي.`,
+
+    COLLOQUIAL: `أنت خبير سوشيال ميديا متخصص في كتابة محتوى عامّي جذاب لمتاجر سلة.
+مهمتك: تحويل تقييمات العملاء لبوستات حلوة وقريبة من الناس.
+اكتب بالعامية السعودية/الخليجية (مثل: "وش تنتظر؟"، "يستاهل"، "جربوه!").
+أسلوبك: ودّي، حماسي، وطبيعي — مثل صديق ينصحك.
+لا تترجم أسماء المنتجات الإنجليزية — استخدمها كما هي.`,
+};
+
+interface SallaPromptArgs {
+    review: SallaReviewContext;
+    business: BusinessContext;
+    options: ArabicCaptionOptions;
+}
+
+function buildSallaInstagramPrompt(args: SallaPromptArgs): string {
+    const { review, business, options } = args;
+    const stars = '⭐'.repeat(review.rating ?? 5);
+    const productInfo = review.productName
+        ? `\nالمنتج: ${review.productName}`
+        : '';
+    const priceInfo = review.productPrice
+        ? `\nالسعر: ${review.productPrice}`
+        : '';
+    const toneNote = options.tone === 'COLLOQUIAL'
+        ? 'اكتب بعامية سعودية/خليجية قريبة من الناس.'
+        : 'اكتب بعربية فصحى معاصرة واحترافية.';
+
+    return `تقييم عميل لمتجر ${business.name}: ${review.rating}/5 ${stars}
+${productInfo}${priceInfo}
+
+التقييم: "${review.text ?? ''}"
+المُقيّم: ${review.authorName ?? 'عميل'}
+
+${toneNote}
+
+اكتب منشور إنستغرام لمتجر سلة يتضمن:
+- عنوان جذاب مع إيموجي مناسب
+- إبراز تجربة العميل والمنتج (3-4 جمل)
+${review.productName ? `- ذكر اسم المنتج "${review.productName}" بشكل طبيعي` : ''}
+${options.includeCTA ? `- دعوة للشراء: "اطلب الآن" مع رابط المتجر` : ''}
+${options.includeHashtags ? `- 5-8 هاشتاقات عربية مثل: #تقييم_عميل #تسوق_اونلاين #سلة #منتجات_أصلية #تقييمات` : '- بدون هاشتاقات'}
+
+أجب بتنسيق JSON فقط:
+{"caption": "...", "hashtags": ["#تقييم_عميل", "#تسوق_اونلاين", "..."], "emoji": "🛍", "cta": "اطلب الآن"}`;
+}
+
+function buildSallaFacebookPrompt(args: SallaPromptArgs): string {
+    const { review, business, options } = args;
+    const stars = '⭐'.repeat(review.rating ?? 5);
+    const productInfo = review.productName
+        ? `\nالمنتج: ${review.productName}`
+        : '';
+    const toneNote = options.tone === 'COLLOQUIAL'
+        ? 'اكتب بعامية سعودية/خليجية.'
+        : 'اكتب بعربية فصحى معاصرة.';
+
+    return `تقييم ${review.rating}/5 ${stars} من ${review.authorName ?? 'عميل'} لمتجر ${business.name}
+${productInfo}
+
+"${review.text ?? ''}"
+
+${toneNote}
+
+اكتب منشور فيسبوك لمتجر سلة:
+- افتتاحية تبرز رضا العميل
+- فقرة عن جودة المنتج والخدمة
+${options.includeCTA ? '- دعوة للزيارة والشراء' : ''}
+${options.includeHashtags ? '- 3-5 هاشتاقات عربية ذات صلة' : '- بدون هاشتاقات'}
+
+JSON فقط:
+{"caption": "...", "hashtags": ["...", "..."], "emoji": "👏", "cta": "زوروا متجرنا"}`;
+}
+
+function buildSallaTwitterPrompt(args: SallaPromptArgs): string {
+    const { review, business, options } = args;
+    const stars = '⭐'.repeat(review.rating ?? 5);
+    const toneNote = options.tone === 'COLLOQUIAL'
+        ? 'اكتب بعامية خليجية مختصرة.'
+        : 'اكتب بفصحى مختصرة.';
+
+    return `${review.rating}/5 ${stars} — ${review.authorName ?? 'عميل'} عن ${business.name}
+${review.productName ? `المنتج: ${review.productName}` : ''}
+
+"${review.text ?? ''}"
+
+${toneNote}
+
+تغريدة قصيرة (أقل من 200 حرف):
+${options.includeCTA ? '- دعوة مختصرة للشراء' : ''}
+${options.includeHashtags ? '- 2-3 هاشتاقات' : ''}
+
+JSON:
+{"caption": "...", "hashtags": ["...", "..."], "emoji": "🔥", "cta": "اطلب الآن"}`;
+}
+
+export function getSallaSystemPrompt(tone: ArabicTone): string {
+    return SALLA_SYSTEM_PROMPTS[tone] ?? SALLA_SYSTEM_PROMPTS.FORMAL;
+}
+
+export function buildSallaUserPrompt(args: SallaPromptArgs): string {
+    switch (args.options.platform) {
+        case PostPlatform.INSTAGRAM:
+            return buildSallaInstagramPrompt(args);
+        case PostPlatform.FACEBOOK:
+            return buildSallaFacebookPrompt(args);
+        case PostPlatform.TWITTER:
+        case PostPlatform.TIKTOK:
+            return buildSallaTwitterPrompt(args);
+        default:
+            return buildSallaInstagramPrompt(args);
     }
 }

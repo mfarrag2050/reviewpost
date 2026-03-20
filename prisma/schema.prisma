@@ -79,6 +79,11 @@ enum TemplateCategory {
   STORY
 }
 
+enum ArabicTone {
+  FORMAL
+  COLLOQUIAL
+}
+
 enum SubscriptionStatus {
   ACTIVE
   PAST_DUE
@@ -149,6 +154,7 @@ model Business {
   logoUrl         String?          @map("logo_url")
   brandColors     Json?            @map("brand_colors")
   platform        BusinessPlatform
+  arabicTone      ArabicTone       @default(FORMAL) @map("arabic_tone")
   createdAt       DateTime         @default(now()) @map("created_at")
 
   user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)

@@ -36,16 +36,14 @@ function getLangAttrs(language?: string): { dir: string; lang: string } {
 
 /**
  * Load an HTML template, inject all data variables, and return the final HTML.
- * Templates live in the same directory as this file.
+ * Standard templates live in src/lib/templates/, Salla templates in src/lib/salla/templates/.
  */
 export function getTemplate(templateId: TemplateId, data: TemplateData): string {
-    const templatePath = path.join(
-        process.cwd(),
-        'src',
-        'lib',
-        'templates',
-        `${templateId}.html`,
-    );
+    const isSalla = templateId.startsWith('salla-');
+    const templateDir = isSalla
+        ? path.join(process.cwd(), 'src', 'lib', 'salla', 'templates')
+        : path.join(process.cwd(), 'src', 'lib', 'templates');
+    const templatePath = path.join(templateDir, `${templateId}.html`);
 
     let html = fs.readFileSync(templatePath, 'utf-8');
 
@@ -76,6 +74,7 @@ export function getTemplate(templateId: TemplateId, data: TemplateData): string 
         '{{product_name}}': escapeHtml(data.product_name ?? ''),
         '{{product_image_url}}': escapeHtml(data.product_image_url ?? ''),
         '{{product_link}}': escapeHtml(data.product_link ?? '#'),
+        '{{product_price}}': escapeHtml(data.product_price ?? ''),
     };
 
     for (const [token, value] of Object.entries(replacements)) {

@@ -52,3 +52,30 @@ export interface CaptionOptions {
     includeHashtags: boolean;
     includeCTA: boolean;
 }
+
+/** Arabic tone for Salla captions */
+export type ArabicTone = 'FORMAL' | 'COLLOQUIAL';
+
+/** Extended context for Salla product reviews */
+export interface SallaReviewContext extends ReviewContext {
+    productName?: string;
+    productImage?: string;
+    productPrice?: string;
+    productLink?: string;
+    storeUrl?: string;
+}
+
+/** Options for Arabic caption generation */
+export interface ArabicCaptionOptions {
+    platform: PostPlatform;
+    tone: ArabicTone;
+    includeHashtags: boolean;
+    includeCTA: boolean;
+    storeLink?: string;
+}
+
+/** Result for Arabic Salla captions */
+export interface ArabicCaptionResult extends CaptionResult {
+    tone: ArabicTone;
+    ctaText?: string;
+}

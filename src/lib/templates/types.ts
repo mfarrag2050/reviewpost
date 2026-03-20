@@ -15,9 +15,16 @@ export interface TemplateData {
     product_name?: string;
     product_image_url?: string;
     product_link?: string;
+    product_price?: string;
     // Layout
     language?: 'AR' | 'EN' | 'TR'; // controls dir + font
     source?: string; // e.g. "Google Reviews"
 }
 
-export type TemplateId = 'classic' | 'bold' | 'product';
+export type TemplateId =
+    | 'classic'
+    | 'bold'
+    | 'product'
+    | 'salla-classic'
+    | 'salla-modern'
+    | 'salla-product';

@@ -1,6 +1,7 @@
 import { prisma } from '../prisma';
 import { SallaAPI, SallaProductReview } from './api';
 import { SallaAuth } from './auth';
+import { ProductMatcher } from './product-matcher';
 import { createLogger } from '../monitoring/logger';
 
 const log = createLogger('SallaSync');
@@ -11,15 +12,18 @@ export interface SyncResult {
     saved: number;
     skippedDuplicate: number;
     skippedOld: number;
+    enriched: number;
     errors: string[];
 }
 
 export class SallaSync {
     private api: SallaAPI;
+    private matcher: ProductMatcher;
 
     constructor(auth?: SallaAuth) {
         const sallaAuth = auth ?? new SallaAuth();
         this.api = new SallaAPI(sallaAuth);
+        this.matcher = new ProductMatcher(sallaAuth);
     }
 
     async syncReviews(storeId: string): Promise<SyncResult> {
@@ -29,6 +33,7 @@ export class SallaSync {
             saved: 0,
             skippedDuplicate: 0,
             skippedOld: 0,
+            enriched: 0,
             errors: [],
         };
 
@@ -66,6 +71,14 @@ export class SallaSync {
                 }
             }
 
+            if (result.saved > 0) {
+                try {
+                    result.enriched = await this.matcher.enrichAllReviews(storeId);
+                } catch (enrichErr) {
+                    log.warn('Product matching failed (non-fatal)', { storeId, error: String(enrichErr) });
+                }
+            }
+
             await prisma.sallaStore.update({
                 where: { id: storeId },
                 data: { lastSyncAt: new Date() },
@@ -75,6 +88,7 @@ export class SallaSync {
                 storeId,
                 totalFound: result.totalFound,
                 saved: result.saved,
+                enriched: result.enriched,
                 skippedDupe: result.skippedDuplicate,
                 skippedOld: result.skippedOld,
             });

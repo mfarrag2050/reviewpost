@@ -1,11 +1,14 @@
 import OpenAI from 'openai';
 import { Language, PostPlatform } from '../../generated/prisma';
-import { getSystemPrompt, buildUserPrompt } from './prompts';
+import { getSystemPrompt, buildUserPrompt, getSallaSystemPrompt, buildSallaUserPrompt } from './prompts';
 import {
     CaptionOptions,
     CaptionResult,
     BusinessContext,
     ReviewContext,
+    ArabicCaptionOptions,
+    ArabicCaptionResult,
+    SallaReviewContext,
 } from './types';
 
 // Fallback default language
@@ -19,6 +22,7 @@ interface RawCaptionResponse {
     caption: string;
     hashtags: string[];
     emoji: string;
+    cta?: string;
 }
 
 /** Parse GPT output — handles both clean JSON and JSON embedded in markdown */
@@ -32,9 +36,9 @@ function parseGPTResponse(content: string): RawCaptionResponse {
             caption: parsed.caption ?? '',
             hashtags: Array.isArray(parsed.hashtags) ? parsed.hashtags : [],
             emoji: parsed.emoji ?? '✨',
+            cta: parsed.cta,
         };
     } catch {
-        // Fallback: treat entire content as caption
         return { caption: cleaned, hashtags: [], emoji: '✨' };
     }
 }
@@ -127,6 +131,67 @@ export class CaptionGenerator {
                 total: usage.total_tokens,
             },
             model: MODEL,
+        };
+    }
+
+    /**
+     * Generate an Arabic caption optimized for Salla e-commerce stores.
+     * Supports formal and colloquial tones, product context, and Arabic hashtags.
+     */
+    async generateArabicCaption(
+        review: SallaReviewContext,
+        business: BusinessContext,
+        options: ArabicCaptionOptions,
+    ): Promise<ArabicCaptionResult> {
+        const systemPrompt = getSallaSystemPrompt(options.tone);
+        const userPrompt = buildSallaUserPrompt({
+            review,
+            business: { ...business, language: 'AR' },
+            options,
+        });
+
+        const response = await this.openai.chat.completions.create({
+            model: MODEL,
+            temperature: TEMPERATURE,
+            max_tokens: 400,
+            messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: userPrompt },
+            ],
+            response_format: { type: 'json_object' },
+        });
+
+        const rawContent = response.choices[0]?.message?.content ?? '{}';
+        const { caption, hashtags, emoji, cta } = parseGPTResponse(rawContent);
+
+        const resolvedCaptionOpts: CaptionOptions = {
+            platform: options.platform,
+            language: 'AR' as Language,
+            includeHashtags: options.includeHashtags,
+            includeCTA: options.includeCTA,
+        };
+        const fullText = assembleFullText(caption, hashtags, emoji, resolvedCaptionOpts);
+
+        const usage = response.usage ?? { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
+
+        console.log(
+            `[CaptionGenerator:Arabic] model=${MODEL} tone=${options.tone} platform=${options.platform} ` +
+            `prompt_tokens=${usage.prompt_tokens} completion_tokens=${usage.completion_tokens} total=${usage.total_tokens}`,
+        );
+
+        return {
+            caption,
+            hashtags,
+            emoji,
+            fullText,
+            tokensUsed: {
+                prompt: usage.prompt_tokens,
+                completion: usage.completion_tokens,
+                total: usage.total_tokens,
+            },
+            model: MODEL,
+            tone: options.tone,
+            ctaText: cta ?? 'اطلب الآن',
         };
     }
 }
