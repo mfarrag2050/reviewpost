@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
 import { SallaAuth, SallaAuthorizePayload } from '@/lib/salla/auth';
 import { SallaSync } from '@/lib/salla/sync';
 import { createLogger } from '@/lib/monitoring/logger';
@@ -12,7 +13,12 @@ const sallaSync = new SallaSync();
 function verifySignature(rawBody: string, signature: string | null): boolean {
     const secret = process.env.SALLA_WEBHOOK_SECRET;
     if (!secret) {
-        log.warn('SALLA_WEBHOOK_SECRET not configured — skipping verification');
+        // في بيئة التطوير — نسمح بدون secret مع تحذير
+        if (process.env.NODE_ENV === 'development') {
+            log.warn('SALLA_WEBHOOK_SECRET not configured — allowing in dev mode');
+            return true;
+        }
+        log.error('SALLA_WEBHOOK_SECRET not configured — rejecting webhook');
         return false;
     }
     if (!signature) return false;
@@ -23,6 +29,47 @@ function verifySignature(rawBody: string, signature: string | null): boolean {
         .digest('hex');
 
     return timingSafeEqual(computed, signature);
+}
+
+/**
+ * Find or create a user for a Salla merchant.
+ * Salla Easy Mode sends merchant info in the authorize webhook.
+ * We try to match by email, otherwise create a new user.
+ */
+async function resolveUserId(payload: SallaAuthorizePayload): Promise<string> {
+    const merchantId = String(payload.merchant);
+    const merchantEmail = (payload as unknown as Record<string, unknown>).email as string | undefined;
+    const storeName = payload.store?.name ?? `Salla Store ${merchantId}`;
+
+    // 1) Check if this merchant already has a store linked to a user
+    const existingStore = await prisma.sallaStore.findUnique({
+        where: { merchantId },
+        select: { userId: true },
+    });
+    if (existingStore) return existingStore.userId;
+
+    // 2) Try to find user by email from the webhook payload
+    if (merchantEmail) {
+        const existingUser = await prisma.user.findUnique({
+            where: { email: merchantEmail },
+            select: { id: true },
+        });
+        if (existingUser) return existingUser.id;
+    }
+
+    // 3) Create a new user for this merchant
+    const email = merchantEmail ?? `merchant-${merchantId}@salla.store`;
+    const user = await prisma.user.create({
+        data: {
+            email,
+            name: storeName,
+            language: 'AR', // Salla merchants are primarily Arabic
+            aiMode: 'SHARED',
+        },
+    });
+
+    log.info('Created new user for Salla merchant', { merchantId, userId: user.id, email });
+    return user.id;
 }
 
 /**
@@ -50,9 +97,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         switch (event) {
             case 'app.store.authorize': {
                 const authorizePayload = payload as SallaAuthorizePayload;
-                // For Easy Mode, we auto-assign to a system user.
-                // In production, this would map to a specific user via onboarding.
-                const userId = payload.user_id ?? 'system';
+                const userId = await resolveUserId(authorizePayload);
                 await sallaAuth.handleAppAuthorize(authorizePayload, userId);
                 break;
             }
@@ -71,7 +116,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
                         id: reviewData.id,
                         rating: reviewData.rating ?? reviewData.stars ?? 5,
                         content: reviewData.content ?? reviewData.comment ?? '',
-                        name: reviewData.name ?? reviewData.customer_name ?? 'Anonymous',
+                        name: reviewData.name ?? reviewData.customer_name ?? 'مجهول',
                         product_id: reviewData.product_id ?? reviewData.product?.id,
                         product_name: reviewData.product_name ?? reviewData.product?.name,
                         product_image: reviewData.product_image ?? reviewData.product?.main_image,

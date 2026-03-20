@@ -1,12 +1,15 @@
-import crypto from 'crypto';
 import { google } from 'googleapis';
 import { prisma } from '../prisma';
+import { encrypt, decrypt } from '../encryption';
 import {
     GoogleReview,
     GoogleLocation,
     PullResult,
     STAR_RATING_MAP,
 } from './types';
+
+// Re-export encryption for backward compatibility (billing, publishing use these)
+export { encrypt, decrypt };
 
 /** Thin typed wrapper around Google APIs that lack full typings in googleapis */
 interface GmbReviewsResponse {
@@ -21,40 +24,6 @@ interface GmbLocationsResponse {
 
 interface GmbAccountsResponse {
     accounts?: Array<{ name: string; accountName: string; type: string }>;
-}
-
-// ─── Encryption helpers (AES-256-GCM) ───────────────────────
-
-const ALGORITHM = 'aes-256-gcm';
-const ENC_KEY_HEX = process.env.TOKEN_ENCRYPTION_KEY ?? '';
-
-function getEncKey(): Buffer {
-    if (!ENC_KEY_HEX || ENC_KEY_HEX.length !== 64) {
-        throw new Error('TOKEN_ENCRYPTION_KEY must be a 64-char hex string (32 bytes)');
-    }
-    return Buffer.from(ENC_KEY_HEX, 'hex');
-}
-
-export function encrypt(plaintext: string): string {
-    const key = getEncKey();
-    const iv = crypto.randomBytes(12);
-    const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
-    const encrypted = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
-    const authTag = cipher.getAuthTag();
-    // Format: iv(24):authTag(32):ciphertext(hex)
-    return `${iv.toString('hex')}:${authTag.toString('hex')}:${encrypted.toString('hex')}`;
-}
-
-export function decrypt(ciphertext: string): string {
-    const key = getEncKey();
-    const [ivHex, tagHex, dataHex] = ciphertext.split(':');
-    if (!ivHex || !tagHex || !dataHex) throw new Error('Invalid ciphertext format');
-    const iv = Buffer.from(ivHex, 'hex');
-    const authTag = Buffer.from(tagHex, 'hex');
-    const data = Buffer.from(dataHex, 'hex');
-    const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
-    decipher.setAuthTag(authTag);
-    return decipher.update(data).toString('utf8') + decipher.final('utf8');
 }
 
 // ─── Rate-limiter: sliding window, max 10 req/min ───────────

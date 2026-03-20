@@ -5,6 +5,46 @@ const log = createLogger('SallaAPI');
 
 const BASE_URL = 'https://api.salla.dev/admin/v2';
 
+// Rate limiter: max 5 req/sec to avoid Salla API throttling
+const REQUEST_INTERVAL_MS = 200;
+let lastRequestAt = 0;
+
+async function throttle(): Promise<void> {
+    const now = Date.now();
+    const elapsed = now - lastRequestAt;
+    if (elapsed < REQUEST_INTERVAL_MS) {
+        await new Promise((r) => setTimeout(r, REQUEST_INTERVAL_MS - elapsed));
+    }
+    lastRequestAt = Date.now();
+}
+
+// ─── Retry with exponential backoff ──────────────────────────
+
+async function withRetry<T>(
+    fn: () => Promise<T>,
+    maxAttempts = 3,
+    label = 'SallaAPI',
+): Promise<T> {
+    let attempt = 0;
+    while (true) {
+        try {
+            return await fn();
+        } catch (err) {
+            attempt++;
+            const status = (err as { status?: number })?.status;
+
+            // Retry on 429 (rate limit) or 5xx (server error)
+            if (attempt < maxAttempts && (status === 429 || (status && status >= 500))) {
+                const delay = 1000 * 2 ** attempt + Math.random() * 500;
+                log.warn(`${label} Retry ${attempt}/${maxAttempts} in ${delay.toFixed(0)}ms (status ${status})`);
+                await new Promise((r) => setTimeout(r, delay));
+            } else {
+                throw err;
+            }
+        }
+    }
+}
+
 // ─── Types ──────────────────────────────────────────────────────
 
 export interface SallaStoreInfo {
@@ -67,33 +107,39 @@ export class SallaAPI {
         path: string,
         params?: Record<string, string>,
     ): Promise<T> {
-        const token = await this.auth.getAccessToken(storeId);
-        const url = new URL(`${BASE_URL}${path}`);
-        if (params) {
-            for (const [k, v] of Object.entries(params)) {
-                url.searchParams.set(k, v);
+        await throttle();
+
+        return withRetry(async () => {
+            const token = await this.auth.getAccessToken(storeId);
+            const url = new URL(`${BASE_URL}${path}`);
+            if (params) {
+                for (const [k, v] of Object.entries(params)) {
+                    url.searchParams.set(k, v);
+                }
             }
-        }
 
-        const res = await fetch(url.toString(), {
-            headers: {
-                Authorization: `Bearer ${token}`,
-                Accept: 'application/json',
-            },
-        });
-
-        if (!res.ok) {
-            const body = await res.text();
-            log.error('Salla API request failed', {
-                storeId,
-                path,
-                status: res.status,
-                body: body.slice(0, 500),
+            const res = await fetch(url.toString(), {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    Accept: 'application/json',
+                },
             });
-            throw new Error(`Salla API ${path} failed: ${res.status}`);
-        }
 
-        return res.json() as Promise<T>;
+            if (!res.ok) {
+                const body = await res.text();
+                log.error('Salla API request failed', {
+                    storeId,
+                    path,
+                    status: res.status,
+                    body: body.slice(0, 500),
+                });
+                const err = new Error(`Salla API ${path} failed: ${res.status}`);
+                (err as unknown as Record<string, unknown>).status = res.status;
+                throw err;
+            }
+
+            return res.json() as Promise<T>;
+        }, 3, `SallaAPI:${path}`);
     }
 
     async getStoreInfo(storeId: string): Promise<SallaStoreInfo> {
@@ -115,7 +161,7 @@ export class SallaAPI {
             { page: String(page), per_page: String(limit) },
         );
         return {
-            products: res.data,
+            products: res.data ?? [],
             totalPages: res.pagination?.total_pages ?? 1,
         };
     }
@@ -132,14 +178,14 @@ export class SallaAPI {
             { page: String(page), per_page: String(limit) },
         );
         return {
-            reviews: res.data.map((r) => ({ ...r, product_id: productId })),
+            reviews: (res.data ?? []).map((r) => ({ ...r, product_id: productId })),
             totalPages: res.pagination?.total_pages ?? 1,
         };
     }
 
     /**
      * Paginate through all products and fetch all their reviews.
-     * Returns a flat array of reviews enriched with product metadata.
+     * Includes rate limiting and null guards for empty stores.
      */
     async getAllReviews(
         storeId: string,
@@ -153,7 +199,12 @@ export class SallaAPI {
             const { products, totalPages } = await this.getProducts(storeId, productPage, 50);
             productTotalPages = totalPages;
 
+            if (!products.length) break;
+
             for (const product of products) {
+                // Skip products with no reviews
+                if (product.rating && product.rating.count === 0) continue;
+
                 let reviewPage = 1;
                 let reviewTotalPages = 1;
 
@@ -165,6 +216,8 @@ export class SallaAPI {
                         50,
                     );
                     reviewTotalPages = rtp;
+
+                    if (!reviews.length) break;
 
                     for (const review of reviews) {
                         allReviews.push({
